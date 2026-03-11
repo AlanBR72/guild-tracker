@@ -6,20 +6,23 @@ import json
 import os
 from datetime import datetime
 import pytz
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # -----------------------
 # CONFIG
 # -----------------------
 
 GUILD_URL = "https://www.rucoyonline.com/guild/Guilt%20Of%20Virtue"
-
 WEBHOOK = "https://discord.com/api/webhooks/1481362798326972448/aRQkId2Le1rzymVrtXQHRgxv2c6RU7GPMrCcg7R6sQ_FXfGQv6xeaJjrOtCXYArL57Up"
 
 ARQUIVO_ESTADO = "estado_msg.json"
 
 INTERVALO = 86400  # 24h
+THREADS = 10       # quantos perfis verificar ao mesmo tempo
 
 BRASIL = pytz.timezone("America/Sao_Paulo")
+
+session = requests.Session()
 
 # -----------------------
 # ESTADO
@@ -30,15 +33,12 @@ def salvar_estado(data):
         json.dump(data,f)
 
 def carregar_estado():
-
     if not os.path.exists(ARQUIVO_ESTADO):
         return {}
-
     with open(ARQUIVO_ESTADO,"r") as f:
         return json.load(f)
 
 estado = carregar_estado()
-
 mensagem_id = estado.get("msg_id")
 
 # -----------------------
@@ -46,26 +46,19 @@ mensagem_id = estado.get("msg_id")
 # -----------------------
 
 def enviar(msg):
-
     global mensagem_id
 
     r = requests.post(WEBHOOK+"?wait=true",json={"content":msg})
 
     if r.status_code in [200,201]:
-
         mensagem_id = r.json()["id"]
-
         salvar_estado({"msg_id":mensagem_id})
-
         print("Mensagem criada no Discord")
 
 def editar(msg):
-
     url = WEBHOOK+"/messages/"+mensagem_id
-
     requests.patch(url,json={"content":msg})
-
-    print("Mensagem atualizada no Discord")
+    print("Mensagem atualizada")
 
 # -----------------------
 # PEGAR MEMBROS
@@ -73,7 +66,7 @@ def editar(msg):
 
 def pegar_membros():
 
-    r = requests.get(GUILD_URL)
+    r = session.get(GUILD_URL)
 
     soup = BeautifulSoup(r.text,"html.parser")
 
@@ -91,31 +84,47 @@ def pegar_membros():
     return membros
 
 # -----------------------
-# LAST ONLINE
+# DETECTAR LAST ONLINE
 # -----------------------
 
 def last_online(nome):
 
-    url = "https://www.rucoyonline.com/characters/"+nome.replace(" ","%20")
+    try:
 
-    r = requests.get(url)
+        url = "https://www.rucoyonline.com/characters/"+nome.replace(" ","%20")
 
-    soup = BeautifulSoup(r.text,"html.parser")
+        r = session.get(url,timeout=10)
 
-    texto = soup.text.lower()
+        soup = BeautifulSoup(r.text,"html.parser")
 
-    if "currently online" in texto:
-        return 0
+        texto = soup.text.lower()
 
-    match = re.search(r'last online: (\d+) days',texto)
+        if "currently online" in texto:
+            return None
 
-    if match:
-        return int(match.group(1))
+        match = re.search(r'last online\s*(\d+)\s*day',texto)
+        if match:
+            return int(match.group(1))
 
-    return None
+        match = re.search(r'last online\s*(\d+)\s*week',texto)
+        if match:
+            return int(match.group(1))*7
+
+        match = re.search(r'last online\s*(\d+)\s*month',texto)
+        if match:
+            return int(match.group(1))*30
+
+        match = re.search(r'last online\s*(\d+)\s*year',texto)
+        if match:
+            return int(match.group(1))*365
+
+        return None
+
+    except:
+        return None
 
 # -----------------------
-# ANALISAR GUILDA
+# ANALISAR GUILDA (RÁPIDO)
 # -----------------------
 
 def analisar():
@@ -124,27 +133,29 @@ def analisar():
 
     print(f"{len(membros)} membros encontrados")
 
-    inativo20 = []
-    inativo10 = []
+    in20=[]
+    in10=[]
 
-    for nome in membros:
+    with ThreadPoolExecutor(max_workers=THREADS) as executor:
 
-        print("Verificando:",nome)
+        futures = {executor.submit(last_online,m): m for m in membros}
 
-        dias = last_online(nome)
+        for future in as_completed(futures):
 
-        if dias is None:
-            continue
+            nome = futures[future]
 
-        if dias >= 20:
-            inativo20.append((nome,dias))
+            dias = future.result()
 
-        elif dias >= 10:
-            inativo10.append((nome,dias))
+            if dias is None:
+                continue
 
-        time.sleep(1)
+            if dias >= 20:
+                in20.append((nome,dias))
 
-    return inativo20,inativo10
+            elif dias >= 10:
+                in10.append((nome,dias))
+
+    return in20,in10
 
 # -----------------------
 # GERAR MENSAGEM
@@ -157,7 +168,7 @@ def gerar_msg(in20,in10):
     data = agora.strftime("%d/%m/%Y")
     hora = agora.strftime("%H:%M")
 
-    msg = f"""📊 **Auditoria da Guilda**
+    msg=f"""📊 **Auditoria da Guilda**
 
 🕒 Atualizado em: {data} às {hora} (Brasil)
 
@@ -165,34 +176,26 @@ def gerar_msg(in20,in10):
 """
 
     if in20:
-
         for nome,dias in sorted(in20,key=lambda x:x[1],reverse=True):
-
-            msg += f"{nome} — {dias} dias\n"
-
+            msg+=f"{nome} — {dias} dias\n"
     else:
+        msg+="_Nenhum_\n"
 
-        msg += "_Nenhum_\n"
-
-    msg += "\n⚠ **Inativos +10 dias**\n"
+    msg+="\n⚠ **Inativos +10 dias**\n"
 
     if in10:
-
         for nome,dias in sorted(in10,key=lambda x:x[1],reverse=True):
-
-            msg += f"{nome} — {dias} dias\n"
-
+            msg+=f"{nome} — {dias} dias\n"
     else:
-
-        msg += "_Nenhum_\n"
+        msg+="_Nenhum_\n"
 
     return msg
 
 # -----------------------
-# LOOP PRINCIPAL
+# LOOP
 # -----------------------
 
-print("Bot de auditoria iniciado")
+print("Bot auditoria iniciado")
 
 while True:
 
@@ -203,11 +206,8 @@ while True:
         msg = gerar_msg(in20,in10)
 
         if mensagem_id:
-
             editar(msg)
-
         else:
-
             enviar(msg)
 
         print("Próxima análise em 24h")
