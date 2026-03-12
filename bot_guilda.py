@@ -202,7 +202,7 @@ def analisar():
 # GERAR MENSAGEM
 # -----------------------
 
-def gerar_msg(in20,in10,antigos,novos,saidos):
+def gerar_msg(in20, in10, antigos, novos, saidos):
 
     agora = datetime.now(BRASIL)
 
@@ -291,7 +291,7 @@ while True:
             continue
 
         in20, in10, antigos, novos, saidos = resultado
-        msg = gerar_msg(in20,in10,antigos)
+        msg = gerar_msg(in20, in10, antigos, novos, saidos)
 
         # Sempre criar nova mensagem no Discord no reinício
         if not mensagem_id:
