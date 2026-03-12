@@ -160,7 +160,10 @@ def pegar_membros():
 
         try:
 
-            data_entrada = datetime.strptime(join_text, "%B %d, %Y")
+            try:
+    data_entrada = datetime.strptime(join_text, "%B %d, %Y")
+except:
+    data_entrada = datetime.strptime(join_text, "%b %d, %Y")
 
             data_entrada = BRASIL.localize(data_entrada)
 
