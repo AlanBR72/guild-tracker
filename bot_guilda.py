@@ -93,71 +93,71 @@ def pegar_membros():
     return membros, guild_datas
 
 # -----------------------
-# DETECTAR LAST ONLINE
+# DETECTAR LAST ONLINE (robusto)
 # -----------------------
 def last_online(nome):
-    url = "https://www.rucoyonline.com/characters/"+nome.replace(" ","%20")
-    for tentativa in range(3):
+    """Retorna os dias desde o último login ou None se estiver online"""
+    url = "https://www.rucoyonline.com/characters/" + nome.replace(" ", "%20")
+
+    for tentativa in range(5):  # até 5 tentativas
         try:
-            r = session.get(url,timeout=10)
+            r = session.get(url, timeout=10)
             texto = r.text.lower()
-            print(f"[DEBUG] {nome}: {texto[:200]}...")  # imprime começo do HTML
+
             if "currently online" in texto:
                 return None
 
-            match = re.search(r'last online\s*(\d+)\s*days?', texto)
-            if match: return int(match.group(1))
-
-            match = re.search(r'last online\s*(\d+)\s*weeks?', texto)
-            if match: return int(match.group(1))*7
-
-            match = re.search(r'last online\s*(\d+)\s*months?', texto)
-            if match: return int(match.group(1))*30
-
-            match = re.search(r'last online\s*(\d+)\s*years?', texto)
-            if match: return int(match.group(1))*365
+            match = re.search(r'last online\s*(\d+)\s*day', texto)
+            if match:
+                return int(match.group(1))
+            match = re.search(r'last online\s*(\d+)\s*week', texto)
+            if match:
+                return int(match.group(1)) * 7
+            match = re.search(r'last online\s*(\d+)\s*month', texto)
+            if match:
+                return int(match.group(1)) * 30
+            match = re.search(r'last online\s*(\d+)\s*year', texto)
+            if match:
+                return int(match.group(1)) * 365
 
             return None
 
-        except:
-            time.sleep(1)
+        except Exception as e:
+            print(f"Erro ao pegar {nome} (tentativa {tentativa+1}/5): {e}")
+            time.sleep(1)  # espera antes de tentar de novo
+    return None
 
 # -----------------------
-# ANALISAR GUILDA
+# ANALISAR GUILDA (sequencial com progresso)
 # -----------------------
-def analisar(primeira_execucao=False):
+def analisar():
     membros, guild_datas = pegar_membros()
     print(f"{len(membros)} membros encontrados")
 
     membros_antigos = carregar_membros()
-    novos = [m for m in membros if m not in membros_antigos] if not primeira_execucao else []
-    saidos = [m for m in membros_antigos if m not in membros] if not primeira_execucao else []
-
+    novos = [m for m in membros if m not in membros_antigos]
+    saidos = [m for m in membros_antigos if m not in membros]
     salvar_membros(membros)
 
     in20 = []
     in10 = []
 
-    with ThreadPoolExecutor(max_workers=THREADS) as executor:
-        futures = {executor.submit(last_online, m): m for m in membros}
-        for future in as_completed(futures):
-            nome = futures[future]
-            dias = future.result()
-            print(f"{nome}: {dias} dias inativo" if dias is not None else f"{nome}: online")
-            time.sleep(0.1)  # delay para não sobrecarregar o site
+    for i, nome in enumerate(membros, start=1):
+        dias = last_online(nome)
+        print(f"[{i}/{len(membros)}] {nome} → {dias if dias is not None else 'Online'}")
+        time.sleep(0.1)  # ⚡ delay pequeno entre requests
 
-            if dias is None:
-                continue
-            if dias >= 20:
-                in20.append((nome,dias))
-            elif dias >= 10:
-                in10.append((nome,dias))
+        if dias is None:
+            continue
+        elif dias >= 20:
+            in20.append((nome, dias))
+        elif dias >= 10:
+            in10.append((nome, dias))
 
     antigos = sorted(guild_datas.items(), key=lambda x: x[1])[:5]
 
-    # ⚠ aviso apenas
-    if len(in20)+len(in10) < 5:
-        print("Aviso: poucos inativos detectados, mas painel será enviado mesmo assim")
+    if len(in20) + len(in10) == 0:
+        print("Nenhum inativo detectado, mas painel será enviado mesmo assim")
 
     return in20, in10, antigos, novos, saidos
 
