@@ -97,12 +97,11 @@ def pegar_membros():
 # -----------------------
 def last_online(nome):
     url = "https://www.rucoyonline.com/characters/"+nome.replace(" ","%20")
-
-    while True:  # tenta até conseguir
+    for tentativa in range(3):
         try:
             r = session.get(url,timeout=10)
             texto = r.text.lower()
-
+            print(f"[DEBUG] {nome}: {texto[:200]}...")  # imprime começo do HTML
             if "currently online" in texto:
                 return None
 
