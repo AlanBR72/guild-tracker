@@ -133,20 +133,22 @@ def pegar_membros():
 
     membros = {}
 
-    linhas = soup.find_all("tr")
+    linhas = soup.select("table tr")
 
     for row in linhas:
 
+        link = row.select_one("a[href*='/characters/']")
         cols = row.find_all("td")
 
-        if len(cols) == 3 and "Join" not in cols[2].text:
+        if link and len(cols) >= 3:
 
-            nome = cols[0].text.strip()
-            join = cols[2].text.strip()
+            nome = link.get_text(strip=True)
+
+            join = cols[-1].get_text(strip=True)
 
             try:
 
-                data_entrada = datetime.strptime(join, "%b %d, %Y")
+                data_entrada = datetime.strptime(join, "%B %d, %Y")
 
                 data_entrada = BRASIL.localize(data_entrada)
 
