@@ -160,7 +160,6 @@ def pegar_membros():
 
         try:
 
-            try:
     data_entrada = datetime.strptime(join_text, "%B %d, %Y")
 except:
     data_entrada = datetime.strptime(join_text, "%b %d, %Y")
