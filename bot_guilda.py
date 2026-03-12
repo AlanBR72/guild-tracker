@@ -281,6 +281,7 @@ print("Bot auditoria iniciado")
 while True:
     try:
         resultado = analisar()
+
         if not resultado:
             time.sleep(60)
             continue
@@ -288,11 +289,8 @@ while True:
         in20, in10, antigos, novos, saidos = resultado
         msg = gerar_msg(in20, in10, antigos, novos, saidos)
 
-        # Sempre criar nova mensagem no Discord no reinício
-        if not mensagem_id:
-            enviar(msg)
-        else:
-            editar(msg)
+        # Sempre criar nova mensagem, nunca editar
+        enviar(msg)
 
         print("Próxima análise em 24h")
         time.sleep(INTERVALO)
