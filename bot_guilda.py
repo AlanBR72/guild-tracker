@@ -18,7 +18,7 @@ WEBHOOK = "https://discord.com/api/webhooks/1481362798326972448/aRQkId2Le1rzymVr
 ARQUIVO_ESTADO = "estado_msg.json"
 ARQUIVO_MEMBROS = "membros_cache.json"
 
-INTERVALO = 86400
+INTERVALO = 3600
 THREADS = 10
 
 BRASIL = pytz.timezone("America/Sao_Paulo")
@@ -315,7 +315,9 @@ while True:
 
         salvar_cache(membros_atuais)
 
-        time.sleep(INTERVALO)
+        for i in range(24):
+    print("Aguardando próxima verificação...")
+    time.sleep(3600)
 
     except Exception as e:
 
