@@ -6,11 +6,11 @@ import json
 import os
 from datetime import datetime
 import pytz
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # -----------------------
 # CONFIG
 # -----------------------
+
 GUILD_URL = "https://www.rucoyonline.com/guild/Guilt%20Of%20Virtue"
 WEBHOOK = "https://discord.com/api/webhooks/1481362798326972448/aRQkId2Le1rzymVrtXQHRgxv2c6RU7GPMrCcg7R6sQ_FXfGQv6xeaJjrOtCXYArL57Up"
 
@@ -18,7 +18,6 @@ ARQUIVO_ESTADO = "estado_msg.json"
 ARQUIVO_MEMBROS = "membros_cache.json"
 
 INTERVALO = 86400  # 24h
-THREADS = 10       # perfis simultâneos
 BRASIL = pytz.timezone("America/Sao_Paulo")
 
 session = requests.Session()
@@ -26,6 +25,7 @@ session = requests.Session()
 # -----------------------
 # ESTADO
 # -----------------------
+
 def salvar_estado(data):
     with open(ARQUIVO_ESTADO,"w") as f:
         json.dump(data,f)
@@ -52,6 +52,7 @@ def carregar_membros():
 # -----------------------
 # DISCORD
 # -----------------------
+
 def enviar(msg):
     global mensagem_id
     r = requests.post(WEBHOOK+"?wait=true",json={"content":msg})
@@ -59,19 +60,24 @@ def enviar(msg):
         mensagem_id = r.json()["id"]
         salvar_estado({"msg_id":mensagem_id})
         print("Mensagem criada no Discord")
+    else:
+        print("Falha ao enviar mensagem:", r.status_code, r.text)
 
 def editar(msg):
     url = WEBHOOK+"/messages/"+mensagem_id
-    requests.patch(url,json={"content":msg})
-    print("Mensagem atualizada")
+    r = requests.patch(url,json={"content":msg})
+    if r.status_code in [200,201]:
+        print("Mensagem atualizada")
+    else:
+        print("Falha ao atualizar mensagem:", r.status_code, r.text)
 
 # -----------------------
 # PEGAR MEMBROS
 # -----------------------
+
 def pegar_membros():
     r = session.get(GUILD_URL)
     soup = BeautifulSoup(r.text,"html.parser")
-
     membros = []
     guild_datas = {}
 
@@ -93,20 +99,17 @@ def pegar_membros():
     return membros, guild_datas
 
 # -----------------------
-# DETECTAR LAST ONLINE (robusto)
+# LAST ONLINE ROBUSTO
 # -----------------------
-def last_online(nome):
-    """Retorna os dias desde o último login ou None se estiver online"""
-    url = "https://www.rucoyonline.com/characters/" + nome.replace(" ", "%20")
 
-    for tentativa in range(5):  # até 5 tentativas
+def last_online(nome):
+    url = "https://www.rucoyonline.com/characters/" + nome.replace(" ", "%20")
+    for tentativa in range(5):
         try:
             r = session.get(url, timeout=10)
             texto = r.text.lower()
-
             if "currently online" in texto:
                 return None
-
             match = re.search(r'last online\s*(\d+)\s*day', texto)
             if match:
                 return int(match.group(1))
@@ -119,24 +122,24 @@ def last_online(nome):
             match = re.search(r'last online\s*(\d+)\s*year', texto)
             if match:
                 return int(match.group(1)) * 365
-
             return None
-
         except Exception as e:
             print(f"Erro ao pegar {nome} (tentativa {tentativa+1}/5): {e}")
-            time.sleep(1)  # espera antes de tentar de novo
+            time.sleep(1)
     return None
 
 # -----------------------
-# ANALISAR GUILDA (sequencial com progresso)
+# ANALISAR GUILDA
 # -----------------------
-def analisar():
+
+def analisar(primeira_execucao=False):
     membros, guild_datas = pegar_membros()
     print(f"{len(membros)} membros encontrados")
 
     membros_antigos = carregar_membros()
-    novos = [m for m in membros if m not in membros_antigos]
-    saidos = [m for m in membros_antigos if m not in membros]
+    novos = [m for m in membros if m not in membros_antigos] if not primeira_execucao else []
+    saidos = [m for m in membros_antigos if m not in membros] if not primeira_execucao else []
+
     salvar_membros(membros)
 
     in20 = []
@@ -145,8 +148,7 @@ def analisar():
     for i, nome in enumerate(membros, start=1):
         dias = last_online(nome)
         print(f"[{i}/{len(membros)}] {nome} → {dias if dias is not None else 'Online'}")
-        time.sleep(0.1)  # ⚡ delay pequeno entre requests
-
+        time.sleep(0.1)
         if dias is None:
             continue
         elif dias >= 20:
@@ -164,6 +166,7 @@ def analisar():
 # -----------------------
 # GERAR MENSAGEM
 # -----------------------
+
 def gerar_msg(in20, in10, antigos, novos, saidos):
     agora = datetime.now(BRASIL)
     data = agora.strftime("%d/%m/%Y")
@@ -175,30 +178,33 @@ def gerar_msg(in20, in10, antigos, novos, saidos):
 
 ❌ **Inativos +20 dias**
 """
+
     if in20:
         for nome,dias in sorted(in20,key=lambda x:x[1],reverse=True):
-            msg += f"{nome} — {dias} dias\n"
+            msg+=f"{nome} — {dias} dias\n"
     else:
-        msg += "_Nenhum_\n"
+        msg+="_Nenhum_\n"
 
-    msg += "\n⚠ **Inativos +10 dias**\n"
+    msg+="\n⚠ **Inativos +10 dias**\n"
+
     if in10:
         for nome,dias in sorted(in10,key=lambda x:x[1],reverse=True):
-            msg += f"{nome} — {dias} dias\n"
+            msg+=f"{nome} — {dias} dias\n"
     else:
-        msg += "_Nenhum_\n"
+        msg+="_Nenhum_\n"
 
     if novos:
-        msg += "\n🟢 **Entraram na guilda**\n"
+        msg+="\n🟢 **Entraram na guilda**\n"
         for n in novos:
-            msg += f"{n}\n"
+            msg+=f"{n}\n"
 
     if saidos:
-        msg += "\n🔴 **Saíram da guilda**\n"
+        msg+="\n🔴 **Saíram da guilda**\n"
         for s in saidos:
-            msg += f"{s}\n"
+            msg+=f"{s}\n"
 
-    msg += "\n🏆 **5 membros mais antigos da guilda**\n"
+    msg+="\n🏆 **5 membros mais antigos da guilda**\n"
+
     for pos,(nome,data) in enumerate(antigos,start=1):
         tempo = datetime.now(BRASIL)-data
         dias = tempo.days
@@ -208,41 +214,43 @@ def gerar_msg(in20, in10, antigos, novos, saidos):
         mes_txt = "mês" if meses==1 else "meses"
 
         if anos>0 and meses>0:
-            tempo_str = f"{anos} {ano_txt} e {meses} {mes_txt}"
+            tempo_str=f"{anos} {ano_txt} e {meses} {mes_txt}"
         elif anos>0:
-            tempo_str = f"{anos} {ano_txt}"
+            tempo_str=f"{anos} {ano_txt}"
         elif meses>0:
-            tempo_str = f"{meses} {mes_txt}"
+            tempo_str=f"{meses} {mes_txt}"
         else:
-            tempo_str = f"{dias} dias"
+            tempo_str=f"{dias} dias"
 
-        if pos==1: posicao="🥇"
-        elif pos==2: posicao="🥈"
-        elif pos==3: posicao="🥉"
-        else: posicao=f"{pos}️⃣"
+        if pos==1:
+            posicao="🥇"
+        elif pos==2:
+            posicao="🥈"
+        elif pos==3:
+            posicao="🥉"
+        else:
+            posicao=f"{pos}️⃣"
 
-        msg += f"{posicao} {nome} — {tempo_str}\n"
+        msg+=f"{posicao} {nome} — {tempo_str}\n"
 
     return msg
 
 # -----------------------
 # LOOP
 # -----------------------
-print("Bot auditoria iniciado")
 
-primeira_execucao = not os.path.exists(ARQUIVO_MEMBROS)
+print("Bot auditoria iniciado")
+primeira_execucao = True
 
 while True:
     try:
-        in20, in10, antigos, novos, saidos = analisar(primeira_execucao=primeira_execucao)
-        msg = gerar_msg(in20, in10, antigos, novos, saidos)
+        in20,in10,antigos,novos,saidos = analisar(primeira_execucao)
+        primeira_execucao = False
 
-        if mensagem_id:
-            editar(msg)
-        else:
-            enviar(msg)
+        msg = gerar_msg(in20,in10,antigos,novos,saidos)
 
-        primeira_execucao = False  # agora já não é mais a primeira execução
+        enviar(msg)  # sempre criar nova mensagem, sem editar
+
         print("Próxima análise em 24h")
         time.sleep(INTERVALO)
 
