@@ -150,7 +150,6 @@ def analisar():
 
     in20=[]
     in10=[]
-    inativos_sem_tag=[]
 
     with ThreadPoolExecutor(max_workers=THREADS) as executor:
 
@@ -159,6 +158,7 @@ def analisar():
         for future in as_completed(futures):
 
             nome = futures[future]
+
             dias = future.result()
 
             if dias is None:
@@ -166,26 +166,19 @@ def analisar():
 
             if dias >= 20:
                 in20.append((nome,dias))
-                
-                # verifica se não tem "Virtue" ou "Culpa" no nome
-                if "virtue" not in nome.lower() and "culpa" not in nome.lower():
-                    # pega a data de entrada do guilda
-                    join_date = guild_datas.get(nome)
-                    if join_date:
-                        inativos_sem_tag.append((nome,dias,join_date))
 
             elif dias >= 10:
                 in10.append((nome,dias))
 
     antigos = sorted(guild_datas.items(), key=lambda x: x[1])[:5]
 
-    return in20,in10,antigos,inativos_sem_tag
+    return in20,in10,antigos
 
 # -----------------------
 # GERAR MENSAGEM
 # -----------------------
 
-def gerar_msg(in20, in10, antigos, inativos_sem_tag):
+def gerar_msg(in20,in10,antigos):
 
     agora = datetime.now(BRASIL)
 
@@ -210,15 +203,6 @@ def gerar_msg(in20, in10, antigos, inativos_sem_tag):
     if in10:
         for nome,dias in sorted(in10,key=lambda x:x[1],reverse=True):
             msg+=f"{nome} — {dias} dias\n"
-    else:
-        msg+="_Nenhum_\n"
-
-        msg+="\n❌ **Inativos +20 dias sem tag 'Virtue' ou 'Culpa'**\n"
-
-    if inativos_sem_tag:
-        for nome,dias,join_date in sorted(inativos_sem_tag,key=lambda x:x[1],reverse=True):
-            data_str = join_date.strftime("%d/%m/%Y")
-            msg+=f"{nome} — {dias} dias — entrou em {data_str}\n"
     else:
         msg+="_Nenhum_\n"
 
@@ -269,8 +253,8 @@ while True:
 
     try:
 
-        in20,in10,antigos,inativos_sem_tag = analisar()
-        msg = gerar_msg(in20,in10,antigos,inativos_sem_tag)
+        in20,in10,antigos = analisar()
+        msg = gerar_msg(in20,in10,antigos)
 
         if mensagem_id:
             editar(msg)
