@@ -16,20 +16,16 @@ GUILD_URL = "https://www.rucoyonline.com/guild/Guilt%20Of%20Virtue"
 WEBHOOK = "https://discord.com/api/webhooks/1481362798326972448/aRQkId2Le1rzymVrtXQHRgxv2c6RU7GPMrCcg7R6sQ_FXfGQv6xeaJjrOtCXYArL57Up"
 
 ARQUIVO_ESTADO = "estado_msg.json"
-ARQUIVO_MEMBROS = "membros_cache.json"
 
-INTERVALO = 60
-THREADS = 10
+INTERVALO = 86400  # 24h
+THREADS = 10       # quantos perfis verificar ao mesmo tempo
 
 BRASIL = pytz.timezone("America/Sao_Paulo")
 
 session = requests.Session()
 
-# NÃO carregar msg antiga
-mensagem_id = None
-
 # -----------------------
-# ESTADO DISCORD
+# ESTADO
 # -----------------------
 
 def salvar_estado(data):
@@ -42,84 +38,27 @@ def carregar_estado():
     with open(ARQUIVO_ESTADO,"r") as f:
         return json.load(f)
 
-# -----------------------
-# CACHE MEMBROS
-# -----------------------
-
-def salvar_cache(membros):
-    with open(ARQUIVO_MEMBROS,"w") as f:
-        json.dump({"membros": membros},f)
-
-def carregar_cache():
-    if not os.path.exists(ARQUIVO_MEMBROS):
-        return []
-    with open(ARQUIVO_MEMBROS,"r") as f:
-        data = json.load(f)
-        return data.get("membros",[])
+estado = carregar_estado()
+mensagem_id = estado.get("msg_id")
 
 # -----------------------
 # DISCORD
 # -----------------------
 
 def enviar(msg):
-
     global mensagem_id
 
-    msg = msg[:1900]
-
-    r = requests.post(WEBHOOK+"?wait=true", json={"content": msg})
-
-    print("Status envio Discord:", r.status_code)
+    r = requests.post(WEBHOOK+"?wait=true",json={"content":msg})
 
     if r.status_code in [200,201]:
-
         mensagem_id = r.json()["id"]
-
-        salvar_estado({"msg_id": mensagem_id})
-
-        print("Mensagem enviada com sucesso")
+        salvar_estado({"msg_id":mensagem_id})
+        print("Mensagem criada no Discord")
 
 def editar(msg):
-
-    global mensagem_id
-
-    if not mensagem_id:
-        return
-
-    url = WEBHOOK + "/messages/" + mensagem_id
-
-    msg = msg[:1900]
-
-    r = requests.patch(url, json={"content": msg})
-
-    if r.status_code != 200:
-        print("Erro ao editar mensagem:", r.text)
-
-# -----------------------
-# TEMPO NA GUILDA
-# -----------------------
-
-def formatar_tempo(data_entrada):
-
-    agora = datetime.now(BRASIL)
-
-    dias = (agora - data_entrada).days
-
-    if dias < 30:
-        return f"{dias} dias"
-
-    elif dias < 365:
-        meses = dias // 30
-        return f"{meses} meses"
-
-    else:
-        anos = dias // 365
-        meses = (dias % 365) // 30
-
-        if meses == 0:
-            return f"{anos} anos"
-        else:
-            return f"{anos} anos e {meses} meses"
+    url = WEBHOOK+"/messages/"+mensagem_id
+    requests.patch(url,json={"content":msg})
+    print("Mensagem atualizada")
 
 # -----------------------
 # PEGAR MEMBROS
@@ -127,67 +66,40 @@ def formatar_tempo(data_entrada):
 
 def pegar_membros():
 
-    for tentativa in range(3):
+    r = session.get(GUILD_URL)
+
+    soup = BeautifulSoup(r.text,"html.parser")
+
+    membros = []
+    guild_datas = {}
+
+    linhas = soup.select("table tr")
+
+    for row in linhas:
+
+        link = row.select_one("a[href*='/characters/']")
+        cols = row.find_all("td")
+
+        if not link or len(cols) < 3:
+            continue
+
+        nome = link.get_text(strip=True)
+
+        join_text = cols[2].get_text(strip=True)
 
         try:
+            data = datetime.strptime(join_text,"%b %d, %Y")
+            data = BRASIL.localize(data)
+            guild_datas[nome] = data
+        except:
+            pass
 
-            r = session.get(GUILD_URL, timeout=10)
+        membros.append(nome)
 
-            soup = BeautifulSoup(r.text, "html.parser")
+    return membros, guild_datas
 
-            membros = {}
-
-            linhas = soup.select("table tr")
-
-            for row in linhas:
-
-                link = row.select_one("a[href*='/characters/']")
-                cols = row.find_all("td")
-
-                if not link or len(cols) < 3:
-                    continue
-
-                nome = link.get_text(strip=True)
-
-                join_text = None
-
-                for col in cols:
-                    texto = col.get_text(strip=True)
-
-                    if re.search(r"\d{4}", texto):
-                        join_text = texto
-                        break
-
-                if not join_text:
-                    continue
-
-                try:
-
-                    try:
-                        data_entrada = datetime.strptime(join_text,"%B %d, %Y")
-                    except:
-                        data_entrada = datetime.strptime(join_text,"%b %d, %Y")
-
-                    data_entrada = BRASIL.localize(data_entrada)
-
-                    membros[nome] = data_entrada
-
-                except:
-                    pass
-
-            if len(membros) > 50:
-                print("Membros encontrados:", len(membros))
-                return membros
-
-        except Exception as e:
-            print("Erro tentativa:", tentativa, e)
-
-        time.sleep(2)
-
-    return {}
-    
 # -----------------------
-# LAST ONLINE
+# DETECTAR LAST ONLINE
 # -----------------------
 
 def last_online(nome):
@@ -227,110 +139,72 @@ def last_online(nome):
         return None
 
 # -----------------------
-# ANALISAR
+# ANALISAR GUILDA (RÁPIDO)
 # -----------------------
 
 def analisar():
 
-    membros = pegar_membros()
+    membros, guild_datas = pegar_membros()
+
+    print(f"{len(membros)} membros encontrados")
 
     in20=[]
     in10=[]
-    sem_tag=[]
 
     with ThreadPoolExecutor(max_workers=THREADS) as executor:
 
-        futures={executor.submit(last_online,n):n for n in membros}
+        futures = {executor.submit(last_online,m): m for m in membros}
 
         for future in as_completed(futures):
 
-            nome=futures[future]
+            nome = futures[future]
 
-            dias=future.result()
+            dias = future.result()
 
-            if dias is not None:
+            if dias is None:
+                continue
 
-                if dias>=20:
-                    in20.append((nome,dias))
+            if dias >= 20:
+                in20.append((nome,dias))
 
-                elif dias>=10:
-                    in10.append((nome,dias))
+            elif dias >= 10:
+                in10.append((nome,dias))
 
-            if not ("culpa" in nome.lower() or "virtue" in nome.lower()):
+    antigos = sorted(guild_datas.items(), key=lambda x: x[1])[:5]
 
-                dias_guilda=(datetime.now(BRASIL)-membros[nome]).days
-
-                if dias_guilda>=20:
-
-                    sem_tag.append((nome,formatar_tempo(membros[nome])))
-
-    membros_ordenados=sorted(membros.items(),key=lambda x:x[1])
-
-    top5=membros_ordenados[:5]
-
-    top5_formatado=[(nome,formatar_tempo(data)) for nome,data in top5]
-
-    return in20,in10,sem_tag,top5_formatado,list(membros.keys())
+return in20,in10,antigos
 
 # -----------------------
-# GERAR MSG
+# GERAR MENSAGEM
 # -----------------------
 
-def gerar_msg(in20,in10,sem_tag,top5,novos,saidos):
+def gerar_msg(in20,in10):
 
-    agora=datetime.now(BRASIL)
+    agora = datetime.now(BRASIL)
 
-    data=agora.strftime("%d/%m/%Y")
-    hora=agora.strftime("%H:%M")
+    data = agora.strftime("%d/%m/%Y")
+    hora = agora.strftime("%H:%M")
 
-    msg=f"📊 **Auditoria da Guilda**\n\n🕒 Atualizado em: {data} às {hora} (Brasil)\n\n"
+    msg=f"""📊 **Auditoria da Guilda**
 
-    if novos:
+🕒 Atualizado em: {data} às {hora} (Brasil)
 
-        msg+="🟢 **Novos membros detectados**\n"
-
-        for n in novos:
-            msg+=f"{n}\n"
-
-        msg+="\n"
-
-    if saidos:
-
-        msg+="🔴 **Membros que saíram da guilda**\n"
-
-        for s in saidos:
-            msg+=f"{s}\n"
-
-        msg+="\n"
-
-    msg+="❌ **Inativos +20 dias**\n"
+❌ **Inativos +20 dias**
+"""
 
     if in20:
-        for n,d in sorted(in20,key=lambda x:x[1],reverse=True):
-            msg+=f"{n} — {d} dias\n"
+        for nome,dias in sorted(in20,key=lambda x:x[1],reverse=True):
+            msg+=f"{nome} — {dias} dias\n"
     else:
         msg+="_Nenhum_\n"
 
     msg+="\n⚠ **Inativos +10 dias**\n"
 
     if in10:
-        for n,d in sorted(in10,key=lambda x:x[1],reverse=True):
-            msg+=f"{n} — {d} dias\n"
+        for nome,dias in sorted(in10,key=lambda x:x[1],reverse=True):
+            msg+=f"{nome} — {dias} dias\n"
     else:
         msg+="_Nenhum_\n"
-
-    msg+="\n🚫 **Sem TAG 'Culpa' ou 'Virtue' (+20 dias na guilda)**\n"
-
-    if sem_tag:
-        for n,t in sem_tag:
-            msg+=f"{n} — {t}\n"
-    else:
-        msg+="_Nenhum_\n"
-
-    msg+="\n🏆 **5 membros mais antigos da guilda**\n"
-
-    for n,t in top5:
-        msg+=f"{n} — {t}\n"
 
     return msg
 
@@ -338,43 +212,26 @@ def gerar_msg(in20,in10,sem_tag,top5,novos,saidos):
 # LOOP
 # -----------------------
 
-print("Bot iniciado")
+print("Bot auditoria iniciado")
 
 while True:
 
     try:
 
-        in20, in10, sem_tag, top5, membros_atuais = analisar()
-
-        membros_antigos = carregar_cache()
-
-        # primeira execução (cache vazio)
-        if not membros_antigos:
-
-            novos = []
-            saidos = []
-
-        else:
-
-            novos = [m for m in membros_atuais if m not in membros_antigos]
-
-            saidos = [m for m in membros_antigos if m not in membros_atuais]
-
-        msg = gerar_msg(in20, in10, sem_tag, top5, novos, saidos)
+        in20,in10,antigos = analisar()
+        msg = gerar_msg(in20,in10,antigos)
 
         if mensagem_id:
             editar(msg)
         else:
             enviar(msg)
 
-        salvar_cache(membros_atuais)
-
-        print("Aguardando próxima verificação...")
+        print("Próxima análise em 24h")
 
         time.sleep(INTERVALO)
 
     except Exception as e:
 
-        print("Erro:", e)
+        print("Erro:",e)
 
         time.sleep(60)
