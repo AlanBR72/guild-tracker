@@ -113,7 +113,7 @@ def pegar_membros():
 
         cols = row.find_all("td")
 
-        if len(cols) == 3:
+        if len(cols) == 3 and "Join" not in cols[2].text:
 
             nome = cols[0].text.strip()
             join = cols[2].text.strip()
@@ -126,6 +126,8 @@ def pegar_membros():
 
             except:
                 pass
+
+    print("Membros encontrados:", len(membros))
 
     return membros
 
