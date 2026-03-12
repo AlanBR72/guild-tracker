@@ -150,7 +150,7 @@ def analisar():
 # -----------------------
 # GERAR MENSAGEM
 # -----------------------
-def gerar_msg(in20,in10,antigos,novos,saidos):
+def gerar_msg(in20, in10, antigos, novos, saidos, primeira_vez=False):
     agora = datetime.now(BRASIL)
     data = agora.strftime("%d/%m/%Y")
     hora = agora.strftime("%H:%M")
@@ -169,12 +169,14 @@ def gerar_msg(in20,in10,antigos,novos,saidos):
             msg+=f"{n} — {d} dias\n"
     else: msg+="_Nenhum_\n"
 
-    if novos:
-        msg+="\n🟢 **Entraram na guilda**\n"
-        for n in novos: msg+=f"{n}\n"
-    if saidos:
-        msg+="\n🔴 **Saíram da guilda**\n"
-        for s in saidos: msg+=f"{s}\n"
+    # 🚫 Se for a primeira execução, não mostrar entradas/saídas
+    if not primeira_vez:
+        if novos:
+            msg+="\n🟢 **Entraram na guilda**\n"
+            for n in novos: msg+=f"{n}\n"
+        if saidos:
+            msg+="\n🔴 **Saíram da guilda**\n"
+            for s in saidos: msg+=f"{s}\n"
 
     msg+="\n🏆 **5 membros mais antigos da guilda**\n"
     for pos,(nome,data) in enumerate(antigos,start=1):
@@ -198,11 +200,14 @@ def gerar_msg(in20,in10,antigos,novos,saidos):
 # -----------------------
 print("Bot auditoria iniciado")
 
+primeira_vez = not os.path.exists(ARQUIVO_MEMBROS) or os.stat(ARQUIVO_MEMBROS).st_size == 0
+
 while True:
     try:
         in20,in10,antigos,novos,saidos = analisar()
-        msg = gerar_msg(in20,in10,antigos,novos,saidos)
+        msg = gerar_msg(in20,in10,antigos,novos,saidos, primeira_vez)
         enviar(msg)
+        primeira_vez = False  # Depois da primeira execução, o cache existe
         print("Próxima análise em 24h")
         time.sleep(INTERVALO)
     except Exception as e:
