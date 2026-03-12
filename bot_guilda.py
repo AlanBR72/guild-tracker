@@ -16,6 +16,7 @@ GUILD_URL = "https://www.rucoyonline.com/guild/Guilt%20Of%20Virtue"
 WEBHOOK = "https://discord.com/api/webhooks/1481362798326972448/aRQkId2Le1rzymVrtXQHRgxv2c6RU7GPMrCcg7R6sQ_FXfGQv6xeaJjrOtCXYArL57Up"
 
 ARQUIVO_ESTADO = "estado_msg.json"
+ARQUIVO_MEMBROS = "membros_cache.json"
 
 INTERVALO = 86400  # 24h
 THREADS = 10       # quantos perfis verificar ao mesmo tempo
@@ -40,6 +41,19 @@ def carregar_estado():
 
 estado = carregar_estado()
 mensagem_id = estado.get("msg_id")
+
+def salvar_membros(lista):
+
+    with open(ARQUIVO_MEMBROS,"w") as f:
+        json.dump(lista,f)
+
+def carregar_membros():
+
+    if not os.path.exists(ARQUIVO_MEMBROS):
+        return []
+
+    with open(ARQUIVO_MEMBROS,"r") as f:
+        return json.load(f)
 
 # -----------------------
 # DISCORD
@@ -148,6 +162,13 @@ def analisar():
 
     print(f"{len(membros)} membros encontrados")
 
+    membros_antigos = carregar_membros()
+
+    novos = [m for m in membros if m not in membros_antigos]
+    saidos = [m for m in membros_antigos if m not in membros]
+
+    salvar_membros(membros)
+
     in20=[]
     in10=[]
 
@@ -172,7 +193,7 @@ def analisar():
 
     antigos = sorted(guild_datas.items(), key=lambda x: x[1])[:5]
 
-    return in20,in10,antigos
+    return in20, in10, antigos, novos, saidos
 
 # -----------------------
 # GERAR MENSAGEM
@@ -192,6 +213,16 @@ def gerar_msg(in20,in10,antigos):
 ❌ **Inativos +20 dias**
 """
 
+    if novos:
+        msg+="\n🟢 **Entraram na guilda**\n"
+        for n in novos:
+            msg+=f"{n}\n"
+
+    if saidos:
+        msg+="\n🔴 **Saíram da guilda**\n"
+        for s in saidos:
+            msg+=f"{s}\n"
+    
     if in20:
         for nome,dias in sorted(in20,key=lambda x:x[1],reverse=True):
             msg+=f"{nome} — {dias} dias\n"
@@ -239,7 +270,7 @@ def gerar_msg(in20,in10,antigos):
         else:
             posicao = f"{pos}️⃣"
 
-        msg+=f"{nome} — {tempo_str}\n"
+        msg+=f"{posicao} {nome} — {tempo_str}\n"
 
     return msg
     
@@ -253,7 +284,7 @@ while True:
 
     try:
 
-        in20,in10,antigos = analisar()
+        in20, in10, antigos, novos, saidos = analisar()
         msg = gerar_msg(in20,in10,antigos)
 
         if mensagem_id:
