@@ -159,7 +159,6 @@ def last_online(nome):
 # ----------------------- # ANALISAR GUILDA (RÁPIDO) # -----------------------
 
 def analisar():
-
     membros, guild_datas = pegar_membros()
 
     print(f"{len(membros)} membros encontrados")
@@ -175,14 +174,11 @@ def analisar():
     in10=[]
 
     with ThreadPoolExecutor(max_workers=THREADS) as executor:
-
         futures = {executor.submit(last_online,m): m for m in membros}
 
         for future in as_completed(futures):
-
             nome = futures[future]
             dias = future.result()
-
             time.sleep(0.1)  # ⚡ delay pequeno entre requests
 
             if dias is None:
@@ -195,10 +191,9 @@ def analisar():
 
     antigos = sorted(guild_datas.items(), key=lambda x: x[1])[:5]
 
-    # 🧠 proteção contra erro do site
+    # ⚠ aviso apenas, sem interromper o painel
     if len(in20) + len(in10) < 5:
-        print("Dados inconsistentes, ignorando atualização")
-        return None
+        print("Aviso: poucos inativos detectados, mas painel será enviado mesmo assim")
 
     return in20, in10, antigos, novos, saidos
 
