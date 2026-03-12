@@ -166,33 +166,43 @@ def analisar():
     print(f"{len(membros)} membros encontrados")
 
     membros_antigos = carregar_membros()
-
     novos = [m for m in membros if m not in membros_antigos]
     saidos = [m for m in membros_antigos if m not in membros]
-
     salvar_membros(membros)
 
-    in20=[]
-    in10=[]
+    in20 = []
+    in10 = []
 
-    with ThreadPoolExecutor(max_workers=THREADS) as executor:
-        futures = {executor.submit(last_online,m): m for m in membros}
+    total = len(membros)
+    for idx, nome in enumerate(membros, start=1):
+        tentativas = 0
+        dias = None
+        while tentativas < 5 and dias is None:
+            try:
+                dias = last_online(nome)
+            except Exception as e:
+                tentativas += 1
+                print(f"[Erro] {nome} (tentativa {tentativas}/5): {e}")
+                time.sleep(1)
 
-        for future in as_completed(futures):
-            nome = futures[future]
-            dias = future.result()
+        if dias is None:
+            print(f"[Falha] Não foi possível obter last_online de {nome}, pulando...")
+            continue
 
-            if dias is None:
-                continue
+        # Atualiza console
+        print(f"[{idx}/{total}] {nome} — {dias if dias is not None else 'Online'} dias")
 
-            if dias >= 20:
-                in20.append((nome,dias))
-            elif dias >= 10:
-                in10.append((nome,dias))
+        if dias >= 20:
+            in20.append((nome, dias))
+        elif dias >= 10:
+            in10.append((nome, dias))
 
+        time.sleep(0.1)  # delay entre requests
+
+    # Selecionar 5 membros mais antigos
     antigos = sorted(guild_datas.items(), key=lambda x: x[1])[:5]
 
-    # ⚠ aviso apenas, sem interromper o painel
+    # Aviso caso poucos inativos
     if len(in20) + len(in10) < 5:
         print("Aviso: poucos inativos detectados, mas painel será enviado mesmo assim")
 
