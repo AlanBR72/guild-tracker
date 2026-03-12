@@ -319,12 +319,20 @@ while True:
 
         in20,in10,sem_tag,top5,membros_atuais=analisar()
 
-        membros_antigos=carregar_cache()
+membros_antigos = carregar_cache()
 
-        novos=[m for m in membros_atuais if m not in membros_antigos]
+# primeira execução
+if not membros_antigos:
 
-        saidos=[m for m in membros_antigos if m not in membros_atuais]
+    novos = []
+    saidos = []
 
+else:
+
+    novos = [m for m in membros_atuais if m not in membros_antigos]
+
+    saidos = [m for m in membros_antigos if m not in membros_atuais]
+    
         msg=gerar_msg(in20,in10,sem_tag,top5,novos,saidos)
 
         if mensagem_id:
