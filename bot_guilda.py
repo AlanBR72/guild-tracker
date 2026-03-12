@@ -315,9 +315,10 @@ while True:
 
         salvar_cache(membros_atuais)
 
+        # espera 24h com logs
         for i in range(24):
-    print("Aguardando próxima verificação...")
-    time.sleep(3600)
+            print(f"Aguardando próxima verificação... ({24-i}h)")
+            time.sleep(3600)
 
     except Exception as e:
 
