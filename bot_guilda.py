@@ -212,17 +212,23 @@ def gerar_msg(in20,in10,antigos):
 
         tempo = datetime.now(BRASIL) - data
 
+        antigos = sorted(guild_datas.items(), key=lambda x: x[1])[:5]
+
         dias = tempo.days
 
         anos = dias // 365
         meses = (dias % 365) // 30
 
+        # plural correto
+        ano_txt = "ano" if anos == 1 else "anos"
+        mes_txt = "mês" if meses == 1 else "meses"
+
         if anos > 0 and meses > 0:
-            tempo_str = f"{anos} anos e {meses} mes"
+            tempo_str = f"{anos} {ano_txt} e {meses} {mes_txt}"
         elif anos > 0:
-            tempo_str = f"{anos} anos"
+            tempo_str = f"{anos} {ano_txt}"
         elif meses > 0:
-            tempo_str = f"{meses} meses"
+            tempo_str = f"{meses} {mes_txt}"
         else:
             tempo_str = f"{dias} dias"
 
