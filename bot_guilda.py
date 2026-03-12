@@ -217,7 +217,9 @@ def gerar_msg(in20,in10,antigos):
         anos = dias // 365
         meses = (dias % 365) // 30
 
-        if anos > 0:
+        if anos > 0 and meses > 0:
+            tempo_str = f"{anos} anos e {meses} mes"
+        elif anos > 0:
             tempo_str = f"{anos} anos"
         elif meses > 0:
             tempo_str = f"{meses} meses"
