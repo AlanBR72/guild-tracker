@@ -157,7 +157,7 @@ def pegar_membros():
 
         if not join_text:
             continue
-
+ 
         try:
 
     data_entrada = datetime.strptime(join_text, "%B %d, %Y")
