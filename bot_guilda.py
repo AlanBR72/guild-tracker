@@ -6,6 +6,7 @@ import json
 import os
 from datetime import datetime
 import pytz
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # -----------------------
 # CONFIG
@@ -17,7 +18,7 @@ ARQUIVO_ESTADO = "estado_msg.json"
 ARQUIVO_MEMBROS = "membros_cache.json"
 
 INTERVALO = 86400  # 24h
-DELAY = 0.1        # delay entre requests
+THREADS = 10       # perfis simultâneos
 BRASIL = pytz.timezone("America/Sao_Paulo")
 
 session = requests.Session()
@@ -60,15 +61,9 @@ def enviar(msg):
         print("Mensagem criada no Discord")
 
 def editar(msg):
-    if not mensagem_id:
-        enviar(msg)
-        return
-    url = WEBHOOK + "/messages/" + mensagem_id
-    r = requests.patch(url,json={"content":msg})
-    if r.status_code in [200,201]:
-        print("Mensagem atualizada")
-    else:
-        enviar(msg)
+    url = WEBHOOK+"/messages/"+mensagem_id
+    requests.patch(url,json={"content":msg})
+    print("Mensagem atualizada")
 
 # -----------------------
 # PEGAR MEMBROS
@@ -76,11 +71,12 @@ def editar(msg):
 def pegar_membros():
     r = session.get(GUILD_URL)
     soup = BeautifulSoup(r.text,"html.parser")
+
     membros = []
     guild_datas = {}
-    linhas = soup.select("table tr")
 
-    for idx,row in enumerate(linhas, start=1):
+    linhas = soup.select("table tr")
+    for row in linhas:
         link = row.select_one("a[href*='/characters/']")
         cols = row.find_all("td")
         if not link or len(cols) < 3:
@@ -100,8 +96,8 @@ def pegar_membros():
 # DETECTAR LAST ONLINE
 # -----------------------
 def last_online(nome):
-    url = "https://www.rucoyonline.com/characters/" + nome.replace(" ","%20")
-    for tentativa in range(5):
+    url = "https://www.rucoyonline.com/characters/"+nome.replace(" ","%20")
+    for tentativa in range(5):  # tenta até 5 vezes
         try:
             r = session.get(url,timeout=10)
             texto = r.text.lower()
@@ -116,100 +112,134 @@ def last_online(nome):
             match = re.search(r'last online\s*(\d+)\s*year',texto)
             if match: return int(match.group(1))*365
             return None
-        except Exception as e:
-            print(f"Erro no perfil {nome}, tentativa {tentativa+1}: {e}")
+        except:
             time.sleep(1)
     return None
 
 # -----------------------
 # ANALISAR GUILDA
 # -----------------------
-def analisar():
+def analisar(primeira_execucao=False):
     membros, guild_datas = pegar_membros()
     print(f"{len(membros)} membros encontrados")
 
     membros_antigos = carregar_membros()
-    novos = [m for m in membros if m not in membros_antigos]
-    saidos = [m for m in membros_antigos if m not in membros]
+    novos = [m for m in membros if m not in membros_antigos] if not primeira_execucao else []
+    saidos = [m for m in membros_antigos if m not in membros] if not primeira_execucao else []
+
     salvar_membros(membros)
 
-    in20, in10 = [], []
+    in20 = []
+    in10 = []
 
-    for idx, nome in enumerate(membros, start=1):
-        dias = last_online(nome)
-        print(f"[{idx}/{len(membros)}] {nome}: {dias} dias")
-        time.sleep(DELAY)
-        if dias is None: continue
-        if dias >= 20: in20.append((nome,dias))
-        elif dias >= 10: in10.append((nome,dias))
+    with ThreadPoolExecutor(max_workers=THREADS) as executor:
+        futures = {executor.submit(last_online, m): m for m in membros}
+        for future in as_completed(futures):
+            nome = futures[future]
+            dias = future.result()
+            print(f"{nome}: {dias} dias inativo" if dias is not None else f"{nome}: online")
+            time.sleep(0.1)  # delay para não sobrecarregar o site
 
-    antigos = sorted(guild_datas.items(), key=lambda x:x[1])[:5]
+            if dias is None:
+                continue
+            if dias >= 20:
+                in20.append((nome,dias))
+            elif dias >= 10:
+                in10.append((nome,dias))
+
+    antigos = sorted(guild_datas.items(), key=lambda x: x[1])[:5]
+
+    # ⚠ aviso apenas
+    if len(in20)+len(in10) < 5:
+        print("Aviso: poucos inativos detectados, mas painel será enviado mesmo assim")
 
     return in20, in10, antigos, novos, saidos
 
 # -----------------------
 # GERAR MENSAGEM
 # -----------------------
-def gerar_msg(in20, in10, antigos, novos, saidos, primeira_vez=False):
+def gerar_msg(in20, in10, antigos, novos, saidos):
     agora = datetime.now(BRASIL)
     data = agora.strftime("%d/%m/%Y")
     hora = agora.strftime("%H:%M")
 
-    msg=f"📊 **Auditoria da Guilda**\n\n🕒 Atualizado em: {data} às {hora} (Brasil)\n\n"
+    msg = f"""📊 **Auditoria da Guilda**
 
-    msg+="❌ **Inativos +20 dias**\n"
+🕒 Atualizado em: {data} às {hora} (Brasil)
+
+❌ **Inativos +20 dias**
+"""
     if in20:
-        for n,d in sorted(in20,key=lambda x:x[1],reverse=True):
-            msg+=f"{n} — {d} dias\n"
-    else: msg+="_Nenhum_\n"
+        for nome,dias in sorted(in20,key=lambda x:x[1],reverse=True):
+            msg += f"{nome} — {dias} dias\n"
+    else:
+        msg += "_Nenhum_\n"
 
-    msg+="\n⚠ **Inativos +10 dias**\n"
+    msg += "\n⚠ **Inativos +10 dias**\n"
     if in10:
-        for n,d in sorted(in10,key=lambda x:x[1],reverse=True):
-            msg+=f"{n} — {d} dias\n"
-    else: msg+="_Nenhum_\n"
+        for nome,dias in sorted(in10,key=lambda x:x[1],reverse=True):
+            msg += f"{nome} — {dias} dias\n"
+    else:
+        msg += "_Nenhum_\n"
 
-    # 🚫 Se for a primeira execução, não mostrar entradas/saídas
-    if not primeira_vez:
-        if novos:
-            msg+="\n🟢 **Entraram na guilda**\n"
-            for n in novos: msg+=f"{n}\n"
-        if saidos:
-            msg+="\n🔴 **Saíram da guilda**\n"
-            for s in saidos: msg+=f"{s}\n"
+    if novos:
+        msg += "\n🟢 **Entraram na guilda**\n"
+        for n in novos:
+            msg += f"{n}\n"
 
-    msg+="\n🏆 **5 membros mais antigos da guilda**\n"
+    if saidos:
+        msg += "\n🔴 **Saíram da guilda**\n"
+        for s in saidos:
+            msg += f"{s}\n"
+
+    msg += "\n🏆 **5 membros mais antigos da guilda**\n"
     for pos,(nome,data) in enumerate(antigos,start=1):
-        tempo = datetime.now(BRASIL) - data
+        tempo = datetime.now(BRASIL)-data
         dias = tempo.days
-        anos = dias // 365
-        meses = (dias % 365) // 30
+        anos = dias//365
+        meses = (dias%365)//30
         ano_txt = "ano" if anos==1 else "anos"
         mes_txt = "mês" if meses==1 else "meses"
-        if anos>0 and meses>0: tempo_str=f"{anos} {ano_txt} e {meses} {mes_txt}"
-        elif anos>0: tempo_str=f"{anos} {ano_txt}"
-        elif meses>0: tempo_str=f"{meses} {mes_txt}"
-        else: tempo_str=f"{dias} dias"
-        posicao = ["🥇","🥈","🥉"][pos-1] if pos<=3 else f"{pos}️⃣"
-        msg+=f"{posicao} {nome} — {tempo_str}\n"
+
+        if anos>0 and meses>0:
+            tempo_str = f"{anos} {ano_txt} e {meses} {mes_txt}"
+        elif anos>0:
+            tempo_str = f"{anos} {ano_txt}"
+        elif meses>0:
+            tempo_str = f"{meses} {mes_txt}"
+        else:
+            tempo_str = f"{dias} dias"
+
+        if pos==1: posicao="🥇"
+        elif pos==2: posicao="🥈"
+        elif pos==3: posicao="🥉"
+        else: posicao=f"{pos}️⃣"
+
+        msg += f"{posicao} {nome} — {tempo_str}\n"
 
     return msg
 
 # -----------------------
-# LOOP PRINCIPAL
+# LOOP
 # -----------------------
 print("Bot auditoria iniciado")
 
-primeira_vez = not os.path.exists(ARQUIVO_MEMBROS) or os.stat(ARQUIVO_MEMBROS).st_size == 0
+primeira_execucao = not os.path.exists(ARQUIVO_MEMBROS)
 
 while True:
     try:
-        in20,in10,antigos,novos,saidos = analisar()
-        msg = gerar_msg(in20,in10,antigos,novos,saidos, primeira_vez)
-        enviar(msg)
-        primeira_vez = False  # Depois da primeira execução, o cache existe
+        in20, in10, antigos, novos, saidos = analisar(primeira_execucao=primeira_execucao)
+        msg = gerar_msg(in20, in10, antigos, novos, saidos)
+
+        if mensagem_id:
+            editar(msg)
+        else:
+            enviar(msg)
+
+        primeira_execucao = False  # agora já não é mais a primeira execução
         print("Próxima análise em 24h")
         time.sleep(INTERVALO)
+
     except Exception as e:
         print("Erro:",e)
         time.sleep(60)
