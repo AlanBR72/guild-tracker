@@ -118,39 +118,43 @@ def pegar_membros():
 
 def last_online(nome):
 
-    try:
+    url = "https://www.rucoyonline.com/characters/"+nome.replace(" ","%20")
 
-        url = "https://www.rucoyonline.com/characters/"+nome.replace(" ","%20")
+    for tentativa in range(3):
 
-        r = session.get(url,timeout=10)
+        try:
 
-        soup = BeautifulSoup(r.text,"html.parser")
+            r = session.get(url,timeout=10)
 
-        texto = soup.text.lower()
+            soup = BeautifulSoup(r.text,"html.parser")
 
-        if "currently online" in texto:
+            texto = soup.text.lower()
+
+            if "currently online" in texto:
+                return None
+
+            match = re.search(r'last online\s*(\d+)\s*day',texto)
+            if match:
+                return int(match.group(1))
+
+            match = re.search(r'last online\s*(\d+)\s*week',texto)
+            if match:
+                return int(match.group(1))*7
+
+            match = re.search(r'last online\s*(\d+)\s*month',texto)
+            if match:
+                return int(match.group(1))*30
+
+            match = re.search(r'last online\s*(\d+)\s*year',texto)
+            if match:
+                return int(match.group(1))*365
+
             return None
 
-        match = re.search(r'last online\s*(\d+)\s*day',texto)
-        if match:
-            return int(match.group(1))
+        except:
+            time.sleep(1)
 
-        match = re.search(r'last online\s*(\d+)\s*week',texto)
-        if match:
-            return int(match.group(1))*7
-
-        match = re.search(r'last online\s*(\d+)\s*month',texto)
-        if match:
-            return int(match.group(1))*30
-
-        match = re.search(r'last online\s*(\d+)\s*year',texto)
-        if match:
-            return int(match.group(1))*365
-
-        return None
-
-    except:
-        return None
+    return None
 
 # -----------------------
 # ANALISAR GUILDA (RÁPIDO)
@@ -182,6 +186,8 @@ def analisar():
 
             dias = future.result()
 
+            time.sleep(0.1)  # ⚡ delay pequeno entre requests
+
             if dias is None:
                 continue
 
@@ -192,6 +198,11 @@ def analisar():
                 in10.append((nome,dias))
 
     antigos = sorted(guild_datas.items(), key=lambda x: x[1])[:5]
+
+    # 🧠 proteção contra erro do site
+    if len(in20) + len(in10) < 5:
+    print("Dados inconsistentes, ignorando atualização")
+    return None
 
     return in20, in10, antigos, novos, saidos
 
@@ -284,7 +295,13 @@ while True:
 
     try:
 
-        in20, in10, antigos, novos, saidos = analisar()
+        resultado = analisar()
+
+        if not resultado:
+            time.sleep(60)
+            continue
+
+        in20, in10, antigos, novos, saidos = resultado
         msg = gerar_msg(in20,in10,antigos)
 
         if mensagem_id:
