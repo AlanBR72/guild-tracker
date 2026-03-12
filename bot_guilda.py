@@ -156,9 +156,7 @@ def last_online(nome):
 
     return None
 
-# -----------------------
-# ANALISAR GUILDA (RÁPIDO)
-# -----------------------
+# ----------------------- # ANALISAR GUILDA (RÁPIDO) # -----------------------
 
 def analisar():
 
@@ -183,7 +181,6 @@ def analisar():
         for future in as_completed(futures):
 
             nome = futures[future]
-
             dias = future.result()
 
             time.sleep(0.1)  # ⚡ delay pequeno entre requests
@@ -193,7 +190,6 @@ def analisar():
 
             if dias >= 20:
                 in20.append((nome,dias))
-
             elif dias >= 10:
                 in10.append((nome,dias))
 
@@ -201,8 +197,8 @@ def analisar():
 
     # 🧠 proteção contra erro do site
     if len(in20) + len(in10) < 5:
-    print("Dados inconsistentes, ignorando atualização")
-    return None
+        print("Dados inconsistentes, ignorando atualização")
+        return None
 
     return in20, in10, antigos, novos, saidos
 
