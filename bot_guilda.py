@@ -127,54 +127,64 @@ def formatar_tempo(data_entrada):
 
 def pegar_membros():
 
-    r = session.get(GUILD_URL)
-
-    soup = BeautifulSoup(r.text, "html.parser")
-
-    membros = {}
-
-    linhas = soup.select("table tr")
-
-    for row in linhas:
-
-        link = row.select_one("a[href*='/characters/']")
-        cols = row.find_all("td")
-
-        if not link or len(cols) < 3:
-            continue
-
-        nome = link.get_text(strip=True)
-
-        # procurar coluna que contém ano (data)
-        join_text = None
-
-        for col in cols:
-            texto = col.get_text(strip=True)
-
-            if re.search(r"\d{4}", texto):
-                join_text = texto
-                break
-
-        if not join_text:
-            continue
+    for tentativa in range(3):
 
         try:
 
-            try:
-                data_entrada = datetime.strptime(join_text, "%B %d, %Y")
-            except:
-                data_entrada = datetime.strptime(join_text, "%b %d, %Y")
+            r = session.get(GUILD_URL, timeout=10)
 
-            data_entrada = BRASIL.localize(data_entrada)
+            soup = BeautifulSoup(r.text, "html.parser")
 
-            membros[nome] = data_entrada
+            membros = {}
 
-        except:
-            print("Erro lendo data:", join_text)
+            linhas = soup.select("table tr")
 
-    print("Membros encontrados:", len(membros))
+            for row in linhas:
 
-    return membros
+                link = row.select_one("a[href*='/characters/']")
+                cols = row.find_all("td")
+
+                if not link or len(cols) < 3:
+                    continue
+
+                nome = link.get_text(strip=True)
+
+                join_text = None
+
+                for col in cols:
+                    texto = col.get_text(strip=True)
+
+                    if re.search(r"\d{4}", texto):
+                        join_text = texto
+                        break
+
+                if not join_text:
+                    continue
+
+                try:
+
+                    try:
+                        data_entrada = datetime.strptime(join_text,"%B %d, %Y")
+                    except:
+                        data_entrada = datetime.strptime(join_text,"%b %d, %Y")
+
+                    data_entrada = BRASIL.localize(data_entrada)
+
+                    membros[nome] = data_entrada
+
+                except:
+                    pass
+
+            if len(membros) > 50:
+                print("Membros encontrados:", len(membros))
+                return membros
+
+        except Exception as e:
+            print("Erro tentativa:", tentativa, e)
+
+        time.sleep(2)
+
+    return {}
     
 # -----------------------
 # LAST ONLINE
