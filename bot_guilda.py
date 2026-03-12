@@ -97,24 +97,31 @@ def pegar_membros():
 # -----------------------
 def last_online(nome):
     url = "https://www.rucoyonline.com/characters/"+nome.replace(" ","%20")
-    for tentativa in range(5):  # tenta até 5 vezes
+
+    while True:  # tenta até conseguir
         try:
             r = session.get(url,timeout=10)
             texto = r.text.lower()
+
             if "currently online" in texto:
                 return None
-            match = re.search(r'last online\s*(\d+)\s*day',texto)
+
+            match = re.search(r'last online\s*(\d+)\s*days?', texto)
             if match: return int(match.group(1))
-            match = re.search(r'last online\s*(\d+)\s*week',texto)
+
+            match = re.search(r'last online\s*(\d+)\s*weeks?', texto)
             if match: return int(match.group(1))*7
-            match = re.search(r'last online\s*(\d+)\s*month',texto)
+
+            match = re.search(r'last online\s*(\d+)\s*months?', texto)
             if match: return int(match.group(1))*30
-            match = re.search(r'last online\s*(\d+)\s*year',texto)
+
+            match = re.search(r'last online\s*(\d+)\s*years?', texto)
             if match: return int(match.group(1))*365
+
             return None
+
         except:
             time.sleep(1)
-    return None
 
 # -----------------------
 # ANALISAR GUILDA
