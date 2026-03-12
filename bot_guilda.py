@@ -208,11 +208,9 @@ def gerar_msg(in20,in10,antigos):
 
     msg+="\n🏆 **5 membros mais antigos da guilda**\n"
 
-    for nome,data in antigos:
+    for pos,(nome,data) in enumerate(antigos, start=1):
 
         tempo = datetime.now(BRASIL) - data
-
-        antigos = sorted(guild_datas.items(), key=lambda x: x[1])[:5]
 
         dias = tempo.days
 
@@ -231,6 +229,15 @@ def gerar_msg(in20,in10,antigos):
             tempo_str = f"{meses} {mes_txt}"
         else:
             tempo_str = f"{dias} dias"
+
+        if pos == 1:
+            posicao = "🥇"
+        elif pos == 2:
+            posicao = "🥈"
+        elif pos == 3:
+            posicao = "🥉"
+        else:
+            posicao = f"{pos}️⃣"
 
         msg+=f"{nome} — {tempo_str}\n"
 
