@@ -172,7 +172,7 @@ def analisar():
 
     antigos = sorted(guild_datas.items(), key=lambda x: x[1])[:5]
 
-return in20,in10,antigos
+    return in20,in10,antigos
 
 # -----------------------
 # GERAR MENSAGEM
