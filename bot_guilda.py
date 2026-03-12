@@ -203,55 +203,49 @@ def analisar():
 # -----------------------
 
 def gerar_msg(in20, in10, antigos, novos, saidos):
-
     agora = datetime.now(BRASIL)
-
     data = agora.strftime("%d/%m/%Y")
     hora = agora.strftime("%H:%M")
 
-    msg=f"""📊 **Auditoria da Guilda**
+    msg = f"""📊 **Auditoria da Guilda**
 
 🕒 Atualizado em: {data} às {hora} (Brasil)
 
 ❌ **Inativos +20 dias**
 """
 
-    if novos:
-        msg+="\n🟢 **Entraram na guilda**\n"
-        for n in novos:
-            msg+=f"{n}\n"
-
-    if saidos:
-        msg+="\n🔴 **Saíram da guilda**\n"
-        for s in saidos:
-            msg+=f"{s}\n"
-    
-    if in20:
-        for nome,dias in sorted(in20,key=lambda x:x[1],reverse=True):
-            msg+=f"{nome} — {dias} dias\n"
+    if :
+        for nome, dias in sorted(, key=lambda x: x[1], reverse=True):
+            msg += f"{nome} — {dias} dias\n"
     else:
-        msg+="_Nenhum_\n"
+        msg += "_Nenhum_\n"
 
-    msg+="\n⚠ **Inativos +10 dias**\n"
+    msg += "\n⚠ **Inativos +10 dias**\n"
 
     if in10:
-        for nome,dias in sorted(in10,key=lambda x:x[1],reverse=True):
-            msg+=f"{nome} — {dias} dias\n"
+        for nome, dias in sorted(in10, key=lambda x: x[1], reverse=True):
+            msg += f"{nome} — {dias} dias\n"
     else:
-        msg+="_Nenhum_\n"
+        msg += "_Nenhum_\n"
 
-    msg+="\n🏆 **5 membros mais antigos da guilda**\n"
+    if novos:
+        msg += "\n🟢 **Entraram na guilda**\n"
+        for n in novos:
+            msg += f"{n}\n"
 
-    for pos,(nome,data) in enumerate(antigos, start=1):
+    if saidos:
+        msg += "\n🔴 **Saíram da guilda**\n"
+        for s in saidos:
+            msg += f"{s}\n"
 
+    msg += "\n🏆 **5 membros mais antigos da guilda**\n"
+
+    for pos, (nome, data) in enumerate(antigos, start=1):
         tempo = datetime.now(BRASIL) - data
-
         dias = tempo.days
-
         anos = dias // 365
         meses = (dias % 365) // 30
 
-        # plural correto
         ano_txt = "ano" if anos == 1 else "anos"
         mes_txt = "mês" if meses == 1 else "meses"
 
@@ -273,7 +267,7 @@ def gerar_msg(in20, in10, antigos, novos, saidos):
         else:
             posicao = f"{pos}️⃣"
 
-        msg+=f"{posicao} {nome} — {tempo_str}\n"
+        msg += f"{posicao} {nome} — {tempo_str}\n"
 
     return msg
     
