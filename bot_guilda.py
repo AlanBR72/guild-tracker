@@ -157,12 +157,13 @@ def pegar_membros():
 
         if not join_text:
             continue
- 
+
         try:
 
-    data_entrada = datetime.strptime(join_text, "%B %d, %Y")
-except:
-    data_entrada = datetime.strptime(join_text, "%b %d, %Y")
+            try:
+                data_entrada = datetime.strptime(join_text, "%B %d, %Y")
+            except:
+                data_entrada = datetime.strptime(join_text, "%b %d, %Y")
 
             data_entrada = BRASIL.localize(data_entrada)
 
@@ -174,7 +175,7 @@ except:
     print("Membros encontrados:", len(membros))
 
     return membros
-
+    
 # -----------------------
 # LAST ONLINE
 # -----------------------
