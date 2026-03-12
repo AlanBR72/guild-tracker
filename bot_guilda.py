@@ -103,36 +103,29 @@ def formatar_tempo(data_entrada):
 def pegar_membros():
 
     r = session.get(GUILD_URL)
-    soup = BeautifulSoup(r.text,"html.parser")
+    soup = BeautifulSoup(r.text, "html.parser")
 
     membros = {}
 
-    linhas = soup.find_all("a", href=re.compile("/characters/"))
+    linhas = soup.find_all("tr")
 
-    for a in linhas:
-
-        nome = a.text.strip()
-
-        row = a.find_parent("tr")
-
-        if not row:
-            continue
+    for row in linhas:
 
         cols = row.find_all("td")
 
-        if len(cols) < 3:
-            continue
+        if len(cols) == 3:
 
-        data_texto = cols[2].text.strip()
+            nome = cols[0].text.strip()
+            join = cols[2].text.strip()
 
-        try:
-            data_entrada = datetime.strptime(data_texto,"%d/%m/%Y")
-            data_entrada = BRASIL.localize(data_entrada)
+            try:
+                data_entrada = datetime.strptime(join, "%b %d, %Y")
+                data_entrada = BRASIL.localize(data_entrada)
 
-            membros[nome] = data_entrada
+                membros[nome] = data_entrada
 
-        except:
-            continue
+            except:
+                pass
 
     return membros
 
