@@ -140,22 +140,34 @@ def pegar_membros():
         link = row.select_one("a[href*='/characters/']")
         cols = row.find_all("td")
 
-        if link and len(cols) >= 3:
+        if not link or len(cols) < 3:
+            continue
 
-            nome = link.get_text(strip=True)
+        nome = link.get_text(strip=True)
 
-            join = cols[-1].get_text(strip=True)
+        # procurar coluna que contém ano (data)
+        join_text = None
 
-            try:
+        for col in cols:
+            texto = col.get_text(strip=True)
 
-                data_entrada = datetime.strptime(join, "%B %d, %Y")
+            if re.search(r"\d{4}", texto):
+                join_text = texto
+                break
 
-                data_entrada = BRASIL.localize(data_entrada)
+        if not join_text:
+            continue
 
-                membros[nome] = data_entrada
+        try:
 
-            except:
-                pass
+            data_entrada = datetime.strptime(join_text, "%B %d, %Y")
+
+            data_entrada = BRASIL.localize(data_entrada)
+
+            membros[nome] = data_entrada
+
+        except:
+            print("Erro lendo data:", join_text)
 
     print("Membros encontrados:", len(membros))
 
