@@ -198,9 +198,7 @@ def analisar():
 
     return in20, in10, antigos, novos, saidos
 
-# -----------------------
-# GERAR MENSAGEM
-# -----------------------
+# ----------------------- # GERAR MENSAGEM # -----------------------
 
 def gerar_msg(in20, in10, antigos, novos, saidos):
     agora = datetime.now(BRASIL)
@@ -214,32 +212,35 @@ def gerar_msg(in20, in10, antigos, novos, saidos):
 ❌ **Inativos +20 dias**
 """
 
-    if :
-        for nome, dias in sorted(, key=lambda x: x[1], reverse=True):
+    # inativos +20 dias
+    if in20:
+        for nome, dias in sorted(in20, key=lambda x: x[1], reverse=True):
             msg += f"{nome} — {dias} dias\n"
     else:
         msg += "_Nenhum_\n"
 
+    # inativos +10 dias
     msg += "\n⚠ **Inativos +10 dias**\n"
-
     if in10:
         for nome, dias in sorted(in10, key=lambda x: x[1], reverse=True):
             msg += f"{nome} — {dias} dias\n"
     else:
         msg += "_Nenhum_\n"
 
+    # novos membros
     if novos:
         msg += "\n🟢 **Entraram na guilda**\n"
         for n in novos:
             msg += f"{n}\n"
 
+    # membros que saíram
     if saidos:
         msg += "\n🔴 **Saíram da guilda**\n"
         for s in saidos:
             msg += f"{s}\n"
 
+    # 5 membros mais antigos
     msg += "\n🏆 **5 membros mais antigos da guilda**\n"
-
     for pos, (nome, data) in enumerate(antigos, start=1):
         tempo = datetime.now(BRASIL) - data
         dias = tempo.days
