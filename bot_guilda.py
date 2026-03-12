@@ -18,7 +18,7 @@ WEBHOOK = "https://discord.com/api/webhooks/1481362798326972448/aRQkId2Le1rzymVr
 ARQUIVO_ESTADO = "estado_msg.json"
 ARQUIVO_MEMBROS = "membros_cache.json"
 
-INTERVALO = 3600
+INTERVALO = 60
 THREADS = 10
 
 BRASIL = pytz.timezone("America/Sao_Paulo")
@@ -62,15 +62,29 @@ def carregar_cache():
 # -----------------------
 
 def enviar(msg):
+
     global mensagem_id
+
     r = requests.post(WEBHOOK+"?wait=true",json={"content":msg})
+
+    print("Status envio Discord:", r.status_code)
+
     if r.status_code in [200,201]:
+
         mensagem_id = r.json()["id"]
+
         salvar_estado({"msg_id":mensagem_id})
 
+        print("Mensagem enviada com sucesso")
+
 def editar(msg):
+
     url = WEBHOOK+"/messages/"+mensagem_id
-    requests.patch(url,json={"content":msg})
+
+    r = requests.patch(url,json={"content":msg})
+
+    if r.status_code != 200:
+        print("Erro ao editar mensagem:", r.text)
 
 # -----------------------
 # TEMPO NA GUILDA
@@ -318,7 +332,7 @@ while True:
         # espera 24h com logs
         for i in range(24):
             print(f"Aguardando próxima verificação... ({24-i}h)")
-            time.sleep(3600)
+            time.sleep(60)
 
     except Exception as e:
 
