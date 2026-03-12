@@ -65,9 +65,12 @@ def enviar(msg):
 
     global mensagem_id
 
+    msg = msg[:1900]
+
     r = requests.post(WEBHOOK+"?wait=true",json={"content":msg})
 
     print("Status envio Discord:", r.status_code)
+print(r.text)
 
     if r.status_code in [200,201]:
 
