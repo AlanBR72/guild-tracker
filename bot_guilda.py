@@ -126,6 +126,8 @@ def last_online(nome):
 
             r = session.get(url,timeout=10)
 
+            time.sleep(0.05)  # delay menor entre requests
+
             soup = BeautifulSoup(r.text,"html.parser")
 
             texto = soup.text.lower()
@@ -179,7 +181,6 @@ def analisar():
         for future in as_completed(futures):
             nome = futures[future]
             dias = future.result()
-            time.sleep(0.1)  # ⚡ delay pequeno entre requests
 
             if dias is None:
                 continue
@@ -201,7 +202,7 @@ def analisar():
 # GERAR MENSAGEM
 # -----------------------
 
-def gerar_msg(in20,in10,antigos):
+def gerar_msg(in20,in10,antigos,novos,saidos):
 
     agora = datetime.now(BRASIL)
 
@@ -283,11 +284,8 @@ def gerar_msg(in20,in10,antigos):
 print("Bot auditoria iniciado")
 
 while True:
-
     try:
-
         resultado = analisar()
-
         if not resultado:
             time.sleep(60)
             continue
@@ -295,17 +293,15 @@ while True:
         in20, in10, antigos, novos, saidos = resultado
         msg = gerar_msg(in20,in10,antigos)
 
-        if mensagem_id:
-            editar(msg)
-        else:
+        # Sempre criar nova mensagem no Discord no reinício
+        if not mensagem_id:
             enviar(msg)
+        else:
+            editar(msg)
 
         print("Próxima análise em 24h")
-
         time.sleep(INTERVALO)
 
     except Exception as e:
-
-        print("Erro:",e)
-
+        print("Erro:", e)
         time.sleep(60)
