@@ -178,7 +178,7 @@ def analisar():
 # GERAR MENSAGEM
 # -----------------------
 
-def gerar_msg(in20,in10):
+def gerar_msg(in20,in10,antigos):
 
     agora = datetime.now(BRASIL)
 
@@ -208,26 +208,26 @@ def gerar_msg(in20,in10):
 
     msg+="\n🏆 **5 membros mais antigos da guilda**\n"
 
-for nome,data in antigos:
+    for nome,data in antigos:
 
-    tempo = datetime.now(BRASIL) - data
+        tempo = datetime.now(BRASIL) - data
 
-    dias = tempo.days
+        dias = tempo.days
 
-    anos = dias // 365
-    meses = (dias % 365) // 30
+        anos = dias // 365
+        meses = (dias % 365) // 30
 
-    if anos > 0:
-        tempo_str = f"{anos} anos"
-    elif meses > 0:
-        tempo_str = f"{meses} meses"
-    else:
-        tempo_str = f"{dias} dias"
+        if anos > 0:
+            tempo_str = f"{anos} anos"
+        elif meses > 0:
+            tempo_str = f"{meses} meses"
+        else:
+            tempo_str = f"{dias} dias"
 
-    msg+=f"{nome} — {tempo_str}\n"
+        msg+=f"{nome} — {tempo_str}\n"
 
     return msg
-
+    
 # -----------------------
 # LOOP
 # -----------------------
