@@ -317,23 +317,23 @@ while True:
 
     try:
 
-        in20,in10,sem_tag,top5,membros_atuais=analisar()
+        in20, in10, sem_tag, top5, membros_atuais = analisar()
 
-membros_antigos = carregar_cache()
+        membros_antigos = carregar_cache()
 
-# primeira execução
-if not membros_antigos:
+        # primeira execução (cache vazio)
+        if not membros_antigos:
 
-    novos = []
-    saidos = []
+            novos = []
+            saidos = []
 
-else:
+        else:
 
-    novos = [m for m in membros_atuais if m not in membros_antigos]
+            novos = [m for m in membros_atuais if m not in membros_antigos]
 
-    saidos = [m for m in membros_antigos if m not in membros_atuais]
-    
-        msg=gerar_msg(in20,in10,sem_tag,top5,novos,saidos)
+            saidos = [m for m in membros_antigos if m not in membros_atuais]
+
+        msg = gerar_msg(in20, in10, sem_tag, top5, novos, saidos)
 
         if mensagem_id:
             editar(msg)
@@ -348,6 +348,6 @@ else:
 
     except Exception as e:
 
-        print("Erro:",e)
+        print("Erro:", e)
 
         time.sleep(60)
