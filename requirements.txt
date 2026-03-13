@@ -1,5 +1,6 @@
 selenium>=4.11.2
 webdriver-manager>=3.8.5
-requests
+requests>=2.31.0
 pytz
 beautifulsoup4
+lxml
