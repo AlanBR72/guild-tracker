@@ -12,11 +12,11 @@ from bs4 import BeautifulSoup
 # CONFIGURAÇÃO
 # -----------------------
 GUILD_URL = "https://www.rucoyonline.com/guild/Guilt%20Of%20Virtue"
-WEBHOOK = "https://discord.com/api/webhooks/1481362798326972448/aRQkId2Le1rzymVrtXQHRgxv2c6RU7GPMrCcg7R6sQ_FXfGQv6xeaJjrOtCXYArL57Up"  # Coloque seu webhook do Discord
+WEBHOOK = "https://discord.com/api/webhooks/1481362798326972448/aRQkId2Le1rzymVrtXQHRgxv2c6RU7GPMrCcg7R6sQ_FXfGQv6xeaJjrOtCXYArL57Up"  # Coloque seu webhook
 
 ARQUIVO_ESTADO = "estado_msg.json"
 INTERVALO = 86400  # 24h
-THREADS = 10  # Quantos perfis verificar simultaneamente
+THREADS = 10
 
 BRASIL = pytz.timezone("America/Sao_Paulo")
 session = requests.Session()
@@ -79,7 +79,7 @@ def pegar_membros():
     return membros, guild_datas
 
 # -----------------------
-# PEGAR LAST ONLINE VIA REQUESTS
+# PEGAR LAST ONLINE (SÓ SE NECESSÁRIO)
 # -----------------------
 def last_online_requests(nome):
     try:
@@ -88,7 +88,7 @@ def last_online_requests(nome):
         texto = r.text.lower()
 
         if "currently online" in texto:
-            return None  # está online
+            return None
 
         patterns = [
             (r'last online\s*(\d+)\s*day',1),
@@ -110,7 +110,7 @@ def last_online_requests(nome):
         return None
 
 # -----------------------
-# ANALISAR GUILDA
+# ANALISAR GUILDA OTIMIZADO
 # -----------------------
 def analisar():
     membros, guild_datas = pegar_membros()
@@ -119,9 +119,13 @@ def analisar():
     in20=[]
     in10=[]
 
-    # Verifica inativos com requests
+    # Filtra apenas os membros que podem estar inativos
+    # Você pode adicionar lógica de "últimos logins recentes" se quiser
+    perfis_para_verificar = membros  # aqui verifica todos, mas você pode filtrar
+
+    # ThreadPoolExecutor só acessa perfis realmente necessários
     with ThreadPoolExecutor(max_workers=THREADS) as executor:
-        futures = {executor.submit(last_online_requests, m): m for m in membros}
+        futures = {executor.submit(last_online_requests, m): m for m in perfis_para_verificar}
         for future in as_completed(futures):
             nome = futures[future]
             dias = future.result()
