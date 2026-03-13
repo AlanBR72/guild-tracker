@@ -228,6 +228,7 @@ def dias_para_tempo(dias):
     return " e ".join(partes)
     
 def gerar_msg(in20, in10, antigos, membros_sem_tag):
+
     agora = datetime.now(BRASIL)
     data = agora.strftime("%d/%m/%Y")
     hora = agora.strftime("%H:%M")
@@ -239,18 +240,18 @@ def gerar_msg(in20, in10, antigos, membros_sem_tag):
 ❌ **Inativos +20 dias**
 """
 
-if in20:
-    for nome, dias in sorted(in20, key=lambda x: x[1], reverse=True):
+    if in20:
+        for nome, dias in sorted(in20, key=lambda x: x[1], reverse=True):
 
-        if dias >= 30:
-            dias_txt = "30+ dias"
-        else:
-            dias_txt = f"{dias} dias"
+            if dias >= 30:
+                dias_txt = "30+ dias"
+            else:
+                dias_txt = f"{dias} dias"
 
-        msg += f"{nome} — {dias_txt}\n"
+            msg += f"{nome} — {dias_txt}\n"
 
-else:
-    msg += "_Nenhum_\n"
+    else:
+        msg += "_Nenhum_\n"
 
     msg += "\n⚠ **Inativos +10 dias**\n"
 
@@ -266,15 +267,17 @@ else:
         for nome, dias, join_date in sorted(
             membros_sem_tag, key=lambda x: x[1], reverse=True
         ):
-            data_str = join_date.strftime("%d/%m/%Y")
+
             tempo_txt = dias_para_tempo(dias)
             msg += f"{nome} — {tempo_txt}\n"
+
     else:
         msg += "_Nenhum_\n"
 
     msg += "\n🏆 **5 membros mais antigos da guilda**\n"
 
     for pos, (nome, data_entrada) in enumerate(antigos, start=1):
+
         tempo = datetime.now(BRASIL) - data_entrada
         dias = tempo.days
         anos = dias // 365
@@ -294,7 +297,6 @@ else:
         msg += f"{medalha} {nome} — {tempo_str}\n"
 
     return msg
-
 
 # =========================
 # LOOP PRINCIPAL
