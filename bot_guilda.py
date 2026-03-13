@@ -5,10 +5,13 @@ from datetime import datetime
 import pytz
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import requests
+import re
+
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
-import re
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
 
 # -----------------------
 # CONFIG
@@ -66,7 +69,7 @@ def pegar_membros():
     options.add_argument("--headless")
     options.add_argument("--disable-gpu")
     options.add_argument("--no-sandbox")
-    driver = webdriver.Chrome(options=options)
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
     driver.get(GUILD_URL)
     time.sleep(5)  # espera a página carregar JS
@@ -75,7 +78,7 @@ def pegar_membros():
     guild_datas = {}
 
     try:
-        # tabela de membros
+        # pega todas as linhas da tabela de membros
         linhas = driver.find_elements(By.CSS_SELECTOR, "table tr")
         for row in linhas[1:]:  # pula header
             cols = row.find_elements(By.TAG_NAME, "td")
@@ -144,7 +147,7 @@ def analisar():
     # 5 membros mais antigos
     antigos = sorted(guild_datas.items(), key=lambda x: x[1])[:5]
 
-    # membros há mais de 20 dias sem tag
+    # membros há mais de 20 dias sem tag "Virtue" ou "Culpa"
     hoje = datetime.now(BRASIL)
     membros_sem_tag = []
     for nome, join_date in guild_datas.items():
