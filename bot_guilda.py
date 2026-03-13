@@ -1,17 +1,11 @@
-import time
+import requests
 import json
 import os
+import re
 from datetime import datetime
 import pytz
 from concurrent.futures import ThreadPoolExecutor, as_completed
-import requests
-import re
-
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
+from bs4 import BeautifulSoup
 
 # -----------------------
 # CONFIG
@@ -25,6 +19,8 @@ INTERVALO = 86400  # 24h
 THREADS = 10
 
 BRASIL = pytz.timezone("America/Sao_Paulo")
+
+session = requests.Session()
 
 # -----------------------
 # ESTADO
@@ -61,42 +57,31 @@ def editar(msg):
     print("Mensagem atualizada")
 
 # -----------------------
-# PEGAR MEMBROS COM SELENIUM
+# PEGAR MEMBROS (HTML puro)
 # -----------------------
 
 def pegar_membros():
-    options = Options()
-    options.binary_location = "/usr/bin/chromium-browser"  # caminho do Chromium no Linux
-    options.add_argument("--headless")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")  # importante em containers Linux
-
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-
-    driver.get(GUILD_URL)
-    time.sleep(5)  # espera carregar JS
+    r = session.get(GUILD_URL)
+    soup = BeautifulSoup(r.text, "html.parser")
 
     membros = []
     guild_datas = {}
 
-    try:
-        linhas = driver.find_elements(By.CSS_SELECTOR, "table tr")
-        for row in linhas[1:]:  # pula header
-            cols = row.find_elements(By.TAG_NAME, "td")
-            if len(cols) < 3:
-                continue
-            nome = cols[0].text.strip()
-            join_text = cols[2].text.strip()
-            try:
-                data = datetime.strptime(join_text, "%b %d, %Y")
-                data = BRASIL.localize(data)
-                guild_datas[nome] = data
-                membros.append(nome)
-            except:
-                continue
-    finally:
-        driver.quit()
+    linhas = soup.select("table tr")
+    for row in linhas[1:]:
+        cols = row.find_all("td")
+        link = row.select_one("a[href*='/characters/']")
+        if not link or len(cols) < 3:
+            continue
+        nome = link.get_text(strip=True)
+        join_text = cols[2].get_text(strip=True)
+        try:
+            data = datetime.strptime(join_text, "%b %d, %Y")
+            data = BRASIL.localize(data)
+            guild_datas[nome] = data
+            membros.append(nome)
+        except:
+            continue
 
     return membros, guild_datas
 
@@ -107,7 +92,7 @@ def pegar_membros():
 def last_online(nome):
     try:
         url = "https://www.rucoyonline.com/characters/" + nome.replace(" ", "%20")
-        r = requests.get(url, timeout=10)
+        r = session.get(url, timeout=10)
         texto = r.text.lower()
         if "currently online" in texto:
             return None
