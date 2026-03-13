@@ -97,19 +97,16 @@ chrome_options.add_argument("--log-level=3")
 service = Service(ChromeDriverManager().install())
 
 # -----------------------
-# PEGAR LAST ONLINE COM SELENIUM
+# PEGAR LAST ONLINE
 # -----------------------
-def last_online_selenium(nome):
+def last_online_requests(nome):
     try:
-        driver = webdriver.Chrome(service=service, options=chrome_options)
         url = f"https://www.rucoyonline.com/characters/{nome.replace(' ','%20')}"
-        driver.get(url)
-        time.sleep(1.5)  # espera carregar
-        texto = driver.page_source.lower()
-        driver.quit()
+        r = requests.get(url, timeout=10)
+        texto = r.text.lower()
 
         if "currently online" in texto:
-            return None
+            return None  # está online
 
         patterns = [
             (r'last online\s*(\d+)\s*day',1),
