@@ -93,18 +93,29 @@ def pegar_membros():
 def last_online(nome):
     try:
         url = "https://www.rucoyonline.com/characters/" + nome.replace(" ", "%20")
-        r = session.get(url, timeout=10)
+        r = requests.get(url, timeout=10)
         texto = r.text.lower()
+
         if "currently online" in texto:
             return None
-        match = re.search(r'last online\s*(\d+)\s*day', texto)
-        if match: return int(match.group(1))
-        match = re.search(r'last online\s*(\d+)\s*week', texto)
-        if match: return int(match.group(1)) * 7
-        match = re.search(r'last online\s*(\d+)\s*month', texto)
-        if match: return int(match.group(1)) * 30
-        match = re.search(r'last online\s*(\d+)\s*year', texto)
-        if match: return int(match.group(1)) * 365
+
+        # Regex mais robusto para dias, semanas, meses, anos
+        patterns = [
+            (r'last online\s*(\d+)\s*day', 1),
+            (r'last online\s*(\d+)\s*days', 1),
+            (r'last online\s*(\d+)\s*week', 7),
+            (r'last online\s*(\d+)\s*weeks', 7),
+            (r'last online\s*(\d+)\s*month', 30),
+            (r'last online\s*(\d+)\s*months', 30),
+            (r'last online\s*(\d+)\s*year', 365),
+            (r'last online\s*(\d+)\s*years', 365),
+        ]
+
+        for pattern, mult in patterns:
+            match = re.search(pattern, texto)
+            if match:
+                return int(match.group(1)) * mult
+
         return None
     except:
         return None
