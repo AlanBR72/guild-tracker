@@ -283,12 +283,28 @@ def gerar_msg(in20, in10, antigos, membros_sem_tag):
         anos = dias // 365
         meses = (dias % 365) // 30
 
-        if anos > 0 and meses > 0:
-            tempo_str = f"{anos} anos e {meses} meses"
-        elif anos > 0:
-            tempo_str = f"{anos} anos"
-        elif meses > 0:
-            tempo_str = f"{meses} meses"
+        # plural correto
+        if anos == 1:
+            ano_txt = "1 ano"
+        elif anos > 1:
+            ano_txt = f"{anos} anos"
+        else:
+            ano_txt = ""
+
+        if meses == 1:
+            mes_txt = "1 mês"
+        elif meses > 1:
+            mes_txt = f"{meses} meses"
+        else:
+            mes_txt = ""
+
+        # montar texto final
+        if ano_txt and mes_txt:
+            tempo_str = f"{ano_txt} e {mes_txt}"
+        elif ano_txt:
+            tempo_str = ano_txt
+        elif mes_txt:
+            tempo_str = mes_txt
         else:
             tempo_str = f"{dias} dias"
 
