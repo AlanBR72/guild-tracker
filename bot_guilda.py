@@ -8,20 +8,15 @@ import requests
 import re
 from bs4 import BeautifulSoup
 
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-from webdriver_manager.chrome import ChromeDriverManager
-
 # -----------------------
 # CONFIGURAÇÃO
 # -----------------------
 GUILD_URL = "https://www.rucoyonline.com/guild/Guilt%20Of%20Virtue"
-WEBHOOK = "SEU_WEBHOOK_AQUI"  # coloque aqui seu webhook do Discord
+WEBHOOK = "https://discord.com/api/webhooks/1481362798326972448/aRQkId2Le1rzymVrtXQHRgxv2c6RU7GPMrCcg7R6sQ_FXfGQv6xeaJjrOtCXYArL57Up"  # Coloque seu webhook do Discord
 
 ARQUIVO_ESTADO = "estado_msg.json"
 INTERVALO = 86400  # 24h
-THREADS = 5  # Quantos perfis verificar simultaneamente
+THREADS = 10  # Quantos perfis verificar simultaneamente
 
 BRASIL = pytz.timezone("America/Sao_Paulo")
 session = requests.Session()
@@ -84,25 +79,12 @@ def pegar_membros():
     return membros, guild_datas
 
 # -----------------------
-# CONFIGURAÇÃO SELENIUM HEADLESS COM CHROME NORMAL
-# -----------------------
-chrome_options = Options()
-chrome_options.binary_location = "/usr/bin/google-chrome"  # ajuste para o caminho do seu Chrome
-chrome_options.add_argument("--headless")
-chrome_options.add_argument("--disable-gpu")
-chrome_options.add_argument("--no-sandbox")
-chrome_options.add_argument("--disable-dev-shm-usage")
-chrome_options.add_argument("--log-level=3")
-
-service = Service(ChromeDriverManager().install())
-
-# -----------------------
-# PEGAR LAST ONLINE
+# PEGAR LAST ONLINE VIA REQUESTS
 # -----------------------
 def last_online_requests(nome):
     try:
         url = f"https://www.rucoyonline.com/characters/{nome.replace(' ','%20')}"
-        r = requests.get(url, timeout=10)
+        r = session.get(url, timeout=10)
         texto = r.text.lower()
 
         if "currently online" in texto:
@@ -137,9 +119,9 @@ def analisar():
     in20=[]
     in10=[]
 
-    # Verifica inativos com Selenium
+    # Verifica inativos com requests
     with ThreadPoolExecutor(max_workers=THREADS) as executor:
-        futures = {executor.submit(last_online_selenium,m): m for m in membros}
+        futures = {executor.submit(last_online_requests, m): m for m in membros}
         for future in as_completed(futures):
             nome = futures[future]
             dias = future.result()
@@ -161,7 +143,7 @@ def analisar():
         if dias_na_guilda > 20 and "virtue" not in nome.lower() and "culpa" not in nome.lower():
             membros_sem_tag.append((nome,dias_na_guilda,join_date))
 
-    return in20,in10,antigos,membros_sem_tag
+    return in20, in10, antigos, membros_sem_tag
 
 # -----------------------
 # GERAR MENSAGEM
@@ -234,8 +216,8 @@ print("Bot auditoria iniciado")
 
 while True:
     try:
-        in20,in10,antigos,membros_sem_tag=analisar()
-        msg=gerar_msg(in20,in10,antigos,membros_sem_tag)
+        in20, in10, antigos, membros_sem_tag = analisar()
+        msg = gerar_msg(in20, in10, antigos, membros_sem_tag)
         if mensagem_id:
             editar(msg)
         else:
