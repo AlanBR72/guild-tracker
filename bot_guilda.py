@@ -8,7 +8,7 @@ import requests
 import re
 from bs4 import BeautifulSoup
 
-# -----------------------
+# ----------------------- 
 # CONFIGURAÇÃO
 # -----------------------
 GUILD_URL = "https://www.rucoyonline.com/guild/Guilt%20Of%20Virtue"
