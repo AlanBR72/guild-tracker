@@ -1,6 +1,6 @@
 import requests
 
-url = "https://www.rucoyonline.com/characters/Alan%20Virtue"
+url = "https://www.rucoyonline.com/characters/Ws%20Pato"
 
 r = requests.get(url)
 
