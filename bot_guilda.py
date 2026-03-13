@@ -233,14 +233,14 @@ def gerar_msg(in20, in10, antigos, membros_sem_tag):
     data = agora.strftime("%d/%m/%Y")
     hora = agora.strftime("%H:%M")
 
-    msg = f"""📊 ═══════ **AUDITORIA DA GUILDA** ═══════
+    msg = f"""📊 ═══════ **AUDITORIA DA GUILDA** ═══════ 📊
 
 _🕒 Atualizado em: {data} • {hora} (Brasil)_
 
 ━━━━━━━━━━━━━━━━━━━━
-🚫 **INATIVOS +20 DIAS**
-━━━━━━━━━━━━━━━━━━━━
+🚫 **Inativos +20 dias**
 """
+
 
     if in20:
         for nome, dias in sorted(in20, key=lambda x: x[1], reverse=True):
@@ -255,7 +255,7 @@ _🕒 Atualizado em: {data} • {hora} (Brasil)_
     else:
         msg += "_Nenhum_\n"
 
-    msg += "\n━━━━━━━━━━━━━━━━━━━━\n⚠️ **INATIVOS +10 DIAS**\n━━━━━━━━━━━━━━━━━━━━\n"
+    msg += "\n⚠️ **Inativos +10 dias**\n"
 
     if in10:
         for nome, dias in sorted(in10, key=lambda x: x[1], reverse=True):
@@ -263,7 +263,7 @@ _🕒 Atualizado em: {data} • {hora} (Brasil)_
     else:
         msg += "_Nenhum_\n"
 
-    msg += "\n━━━━━━━━━━━━━━━━━━━━\n❌ **MEMBROS HÁ MAIS DE 20 DIAS SEM TAG**\n(Virtue / Culpa)\n━━━━━━━━━━━━━━━━━━━━\n"
+    msg += "\n❌ **Membros há mais de 20 dias sem tag (Virtue / Culpa)**\n"
 
     if membros_sem_tag:
         for nome, dias, join_date in sorted(
@@ -276,7 +276,7 @@ _🕒 Atualizado em: {data} • {hora} (Brasil)_
     else:
         msg += "_Nenhum_\n"
 
-    msg += "\n━━━━━━━━━━━━━━━━━━━━\n🏆 **5 MEMBROS MAIS ANTIGOS DA GUILDA**\n━━━━━━━━━━━━━━━━━━━━\n"
+    msg += "\n🏆 **5 membros mais antigos da guilda**\n"
 
     for pos, (nome, data_entrada) in enumerate(antigos, start=1):
 
