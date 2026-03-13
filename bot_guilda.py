@@ -16,13 +16,12 @@ from webdriver_manager.chrome import ChromeDriverManager
 # -----------------------
 # CONFIGURAÇÃO
 # -----------------------
-
 GUILD_URL = "https://www.rucoyonline.com/guild/Guilt%20Of%20Virtue"
 WEBHOOK = "https://discord.com/api/webhooks/1481362798326972448/aRQkId2Le1rzymVrtXQHRgxv2c6RU7GPMrCcg7R6sQ_FXfGQv6xeaJjrOtCXYArL57Up"
 
 ARQUIVO_ESTADO = "estado_msg.json"
 INTERVALO = 86400  # 24h
-THREADS = 10
+THREADS = 5  # Quantos perfis verificar simultaneamente
 
 BRASIL = pytz.timezone("America/Sao_Paulo")
 session = requests.Session()
@@ -30,7 +29,6 @@ session = requests.Session()
 # -----------------------
 # ESTADO
 # -----------------------
-
 def salvar_estado(data):
     with open(ARQUIVO_ESTADO, "w") as f:
         json.dump(data, f)
@@ -47,7 +45,6 @@ mensagem_id = estado.get("msg_id")
 # -----------------------
 # DISCORD
 # -----------------------
-
 def enviar(msg):
     global mensagem_id
     r = requests.post(WEBHOOK + "?wait=true", json={"content": msg})
@@ -64,7 +61,6 @@ def editar(msg):
 # -----------------------
 # PEGAR MEMBROS DA GUILDA
 # -----------------------
-
 def pegar_membros():
     r = session.get(GUILD_URL)
     soup = BeautifulSoup(r.text, "html.parser")
@@ -79,18 +75,17 @@ def pegar_membros():
         nome = link.get_text(strip=True)
         join_text = cols[2].get_text(strip=True)
         try:
-            data = datetime.strptime(join_text, "%b %d, %Y")
-            data = BRASIL.localize(data)
-            guild_datas[nome] = data
+            join_date = datetime.strptime(join_text, "%b %d, %Y")
+            join_date = BRASIL.localize(join_date)
+            guild_datas[nome] = join_date
             membros.append(nome)
         except:
             continue
     return membros, guild_datas
 
 # -----------------------
-# SELENIUM HEADLESS CONFIG
+# CONFIGURAÇÃO SELENIUM HEADLESS
 # -----------------------
-
 chrome_options = Options()
 chrome_options.add_argument("--headless")
 chrome_options.add_argument("--disable-gpu")
@@ -98,15 +93,14 @@ chrome_options.add_argument("--no-sandbox")
 chrome_options.add_argument("--disable-dev-shm-usage")
 chrome_options.add_argument("--log-level=3")
 
-# Ajuste o caminho do Chromium no seu VPS
+# Ajuste para o caminho do Chromium no seu VPS
 chrome_options.binary_location = "/usr/bin/chromium-browser"
 
 service = Service(ChromeDriverManager().install())
 
 # -----------------------
-# PEGAR LAST ONLINE
+# PEGAR LAST ONLINE COM SELENIUM
 # -----------------------
-
 def last_online_selenium(nome):
     try:
         driver = webdriver.Chrome(service=service, options=chrome_options)
@@ -141,7 +135,6 @@ def last_online_selenium(nome):
 # -----------------------
 # ANALISAR GUILDA
 # -----------------------
-
 def analisar():
     membros, guild_datas = pegar_membros()
     print(f"{len(membros)} membros encontrados")
@@ -149,6 +142,7 @@ def analisar():
     in20=[]
     in10=[]
 
+    # Verifica inativos com Selenium
     with ThreadPoolExecutor(max_workers=THREADS) as executor:
         futures = {executor.submit(last_online_selenium,m): m for m in membros}
         for future in as_completed(futures):
@@ -164,7 +158,7 @@ def analisar():
     # 5 membros mais antigos
     antigos = sorted(guild_datas.items(), key=lambda x: x[1])[:5]
 
-    # membros há mais de 20 dias sem tag
+    # membros sem tag +20 dias (apenas pelo site da guilda)
     hoje = datetime.now(BRASIL)
     membros_sem_tag=[]
     for nome, join_date in guild_datas.items():
@@ -177,7 +171,6 @@ def analisar():
 # -----------------------
 # GERAR MENSAGEM
 # -----------------------
-
 def gerar_msg(in20,in10,antigos,membros_sem_tag):
     agora=datetime.now(BRASIL)
     data=agora.strftime("%d/%m/%Y")
@@ -242,7 +235,6 @@ def gerar_msg(in20,in10,antigos,membros_sem_tag):
 # -----------------------
 # LOOP PRINCIPAL
 # -----------------------
-
 print("Bot auditoria iniciado")
 
 while True:
