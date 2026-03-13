@@ -250,7 +250,7 @@ _🕒 Atualizado em: {data} • {hora} (Brasil)_
             else:
                 dias_txt = f"{dias} dias"
 
-            msg += f"{nome} — {dias_txt}\n"
+            msg += f"{nome} ➤ {dias_txt}\n"
 
     else:
         msg += "_Nenhum_\n"
@@ -259,7 +259,7 @@ _🕒 Atualizado em: {data} • {hora} (Brasil)_
 
     if in10:
         for nome, dias in sorted(in10, key=lambda x: x[1], reverse=True):
-            msg += f"{nome} • {dias} dias\n"
+            msg += f"_{nome} ➤ {dias} dias_\n"
     else:
         msg += "_Nenhum_\n"
 
@@ -271,7 +271,7 @@ _🕒 Atualizado em: {data} • {hora} (Brasil)_
         ):
 
             tempo_txt = dias_para_tempo(dias)
-            msg += f"{nome} • {tempo_txt}\n"
+            msg += f"_{nome} ➤ {tempo_txt}_\n"
 
     else:
         msg += "_Nenhum_\n"
@@ -312,7 +312,7 @@ _🕒 Atualizado em: {data} • {hora} (Brasil)_
 
         medalha = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣"][pos - 1]
 
-        msg += f"{medalha} {nome} • {tempo_str}\n"
+        msg += f"{medalha} _{nome} ➤ {tempo_str}_\n"
 
     return msg
 
