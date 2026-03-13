@@ -197,6 +197,36 @@ def analisar():
 # =========================
 # GERAR MENSAGEM
 # =========================
+def dias_para_tempo(dias):
+
+    anos = dias // 365
+    resto_ano = dias % 365
+
+    meses = resto_ano // 30
+    resto_dias = resto_ano % 30
+
+    partes = []
+
+    if anos > 0:
+        if anos == 1:
+            partes.append("1 ano")
+        else:
+            partes.append(f"{anos} anos")
+
+    if meses > 0:
+        if meses == 1:
+            partes.append("1 mês")
+        else:
+            partes.append(f"{meses} meses")
+
+    if anos == 0 and resto_dias > 0:
+        if resto_dias == 1:
+            partes.append("1 dia")
+        else:
+            partes.append(f"{resto_dias} dias")
+
+    return " e ".join(partes)
+    
 def gerar_msg(in20, in10, antigos, membros_sem_tag):
     agora = datetime.now(BRASIL)
     data = agora.strftime("%d/%m/%Y")
@@ -211,7 +241,12 @@ def gerar_msg(in20, in10, antigos, membros_sem_tag):
 
     if in20:
         for nome, dias in sorted(in20, key=lambda x: x[1], reverse=True):
-            msg += f"{nome} — {dias} dias\n"
+            if dias >= 30:
+        dias_txt = "30+ dias"
+    else:
+        dias_txt = f"{dias} dias"
+
+    msg += f"{nome} — {dias_txt}\n"
     else:
         msg += "_Nenhum_\n"
 
@@ -230,7 +265,8 @@ def gerar_msg(in20, in10, antigos, membros_sem_tag):
             membros_sem_tag, key=lambda x: x[1], reverse=True
         ):
             data_str = join_date.strftime("%d/%m/%Y")
-            msg += f"{nome} — {dias} dias — entrou em {data_str}\n"
+            tempo_txt = dias_para_tempo(dias)
+            msg += f"{nome} — {tempo_txt}\n"
     else:
         msg += "_Nenhum_\n"
 
