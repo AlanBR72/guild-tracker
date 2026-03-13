@@ -238,7 +238,7 @@ def gerar_msg(in20, in10, antigos, membros_sem_tag):
 _🕒 Atualizado em: {data} • {hora} (Brasil)_
 
 ━━━━━━━━━━━━━━━━━━━━
-🚫 **Inativos +20 dias**
+🚫 **Inativos há mais de 20 dias**
 """
 
 
@@ -255,7 +255,7 @@ _🕒 Atualizado em: {data} • {hora} (Brasil)_
     else:
         msg += "_Nenhum_\n"
 
-    msg += "\n⚠️ **Inativos +10 dias**\n"
+    msg += "\n⚠️ **Inativos há mais de 10 dias**\n"
 
     if in10:
         for nome, dias in sorted(in10, key=lambda x: x[1], reverse=True):
@@ -263,7 +263,7 @@ _🕒 Atualizado em: {data} • {hora} (Brasil)_
     else:
         msg += "_Nenhum_\n"
 
-    msg += "\n❌ **Membros há mais de 20 dias sem tag (Virtue / Culpa)**\n"
+    msg += "\n❌ **Membros há mais de 20 dias sem tag (Virtue / Culpa):**\n"
 
     if membros_sem_tag:
         for nome, dias, join_date in sorted(
@@ -276,7 +276,7 @@ _🕒 Atualizado em: {data} • {hora} (Brasil)_
     else:
         msg += "_Nenhum_\n"
 
-    msg += "\n🏆 **5 membros mais antigos da guilda**\n"
+    msg += "\n🏆 **5 Membros mais antigos da guilda:**\n"
 
     for pos, (nome, data_entrada) in enumerate(antigos, start=1):
 
