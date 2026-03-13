@@ -1,12 +1,17 @@
-import requests
 import time
 import json
 import os
-import re
 from datetime import datetime
 import pytz
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import requests
+import re
 from bs4 import BeautifulSoup
+
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+from webdriver_manager.chrome import ChromeDriverManager
 
 # -----------------------
 # CONFIG
@@ -20,7 +25,6 @@ INTERVALO = 86400  # 24h
 THREADS = 10
 
 BRASIL = pytz.timezone("America/Sao_Paulo")
-
 session = requests.Session()
 
 # -----------------------
@@ -58,16 +62,14 @@ def editar(msg):
     print("Mensagem atualizada")
 
 # -----------------------
-# PEGAR MEMBROS (HTML puro)
+# PEGAR MEMBROS DA GUILDA (HTML leve)
 # -----------------------
 
 def pegar_membros():
     r = session.get(GUILD_URL)
     soup = BeautifulSoup(r.text, "html.parser")
-
     membros = []
     guild_datas = {}
-
     linhas = soup.select("table tr")
     for row in linhas[1:]:
         cols = row.find_all("td")
@@ -83,41 +85,51 @@ def pegar_membros():
             membros.append(nome)
         except:
             continue
-
     return membros, guild_datas
 
 # -----------------------
-# DETECTAR LAST ONLINE
+# INATIVOS (Selenium headless)
 # -----------------------
 
-def last_online(nome):
+chrome_options = Options()
+chrome_options.add_argument("--headless")
+chrome_options.add_argument("--disable-gpu")
+chrome_options.add_argument("--no-sandbox")
+chrome_options.add_argument("--disable-dev-shm-usage")
+chrome_options.add_argument("--log-level=3")
+chrome_options.binary_location = "/usr/bin/chromium-browser"  # ajuste se necessário
+
+service = Service(ChromeDriverManager().install())
+
+def last_online_selenium(nome):
     try:
-        url = "https://www.rucoyonline.com/characters/" + nome.replace(" ", "%20")
-        r = requests.get(url, timeout=10)
-        texto = r.text.lower()
+        driver = webdriver.Chrome(service=service, options=chrome_options)
+        url = f"https://www.rucoyonline.com/characters/{nome.replace(' ','%20')}"
+        driver.get(url)
+        time.sleep(1.5)  # espera JS carregar
+        texto = driver.page_source.lower()
+        driver.quit()
 
         if "currently online" in texto:
             return None
 
-        # Regex mais robusto para dias, semanas, meses, anos
         patterns = [
-            (r'last online\s*(\d+)\s*day', 1),
-            (r'last online\s*(\d+)\s*days', 1),
-            (r'last online\s*(\d+)\s*week', 7),
-            (r'last online\s*(\d+)\s*weeks', 7),
-            (r'last online\s*(\d+)\s*month', 30),
-            (r'last online\s*(\d+)\s*months', 30),
-            (r'last online\s*(\d+)\s*year', 365),
-            (r'last online\s*(\d+)\s*years', 365),
+            (r'last online\s*(\d+)\s*day',1),
+            (r'last online\s*(\d+)\s*days',1),
+            (r'last online\s*(\d+)\s*week',7),
+            (r'last online\s*(\d+)\s*weeks',7),
+            (r'last online\s*(\d+)\s*month',30),
+            (r'last online\s*(\d+)\s*months',30),
+            (r'last online\s*(\d+)\s*year',365),
+            (r'last online\s*(\d+)\s*years',365),
         ]
-
         for pattern, mult in patterns:
-            match = re.search(pattern, texto)
+            match = re.search(pattern,texto)
             if match:
                 return int(match.group(1)) * mult
-
         return None
-    except:
+    except Exception as e:
+        print(f"Erro ao pegar {nome}: {e}")
         return None
 
 # -----------------------
@@ -128,98 +140,98 @@ def analisar():
     membros, guild_datas = pegar_membros()
     print(f"{len(membros)} membros encontrados")
 
-    in20 = []
-    in10 = []
+    in20=[]
+    in10=[]
 
+    # executa Selenium em paralelo
     with ThreadPoolExecutor(max_workers=THREADS) as executor:
-        futures = {executor.submit(last_online, m): m for m in membros}
+        futures = {executor.submit(last_online_selenium,m): m for m in membros}
         for future in as_completed(futures):
             nome = futures[future]
             dias = future.result()
             if dias is None:
                 continue
             if dias >= 20:
-                in20.append((nome, dias))
+                in20.append((nome,dias))
             elif dias >= 10:
-                in10.append((nome, dias))
+                in10.append((nome,dias))
 
     # 5 membros mais antigos
     antigos = sorted(guild_datas.items(), key=lambda x: x[1])[:5]
 
     # membros há mais de 20 dias sem tag
     hoje = datetime.now(BRASIL)
-    membros_sem_tag = []
+    membros_sem_tag=[]
     for nome, join_date in guild_datas.items():
         dias_na_guilda = (hoje - join_date).days
         if dias_na_guilda > 20 and "virtue" not in nome.lower() and "culpa" not in nome.lower():
-            membros_sem_tag.append((nome, dias_na_guilda, join_date))
+            membros_sem_tag.append((nome,dias_na_guilda,join_date))
 
-    return in20, in10, antigos, membros_sem_tag
+    return in20,in10,antigos,membros_sem_tag
 
 # -----------------------
 # GERAR MENSAGEM
 # -----------------------
 
-def gerar_msg(in20, in10, antigos, membros_sem_tag):
-    agora = datetime.now(BRASIL)
-    data = agora.strftime("%d/%m/%Y")
-    hora = agora.strftime("%H:%M")
+def gerar_msg(in20,in10,antigos,membros_sem_tag):
+    agora=datetime.now(BRASIL)
+    data=agora.strftime("%d/%m/%Y")
+    hora=agora.strftime("%H:%M")
 
-    msg = f"""📊 **Auditoria da Guilda**
+    msg=f"""📊 **Auditoria da Guilda**
 
 🕒 Atualizado em: {data} às {hora} (Brasil)
 
 ❌ **Inativos +20 dias**
 """
     if in20:
-        for nome, dias in sorted(in20, key=lambda x: x[1], reverse=True):
-            msg += f"{nome} — {dias} dias\n"
+        for nome,dias in sorted(in20,key=lambda x:x[1],reverse=True):
+            msg+=f"{nome} — {dias} dias\n"
     else:
-        msg += "_Nenhum_\n"
+        msg+="_Nenhum_\n"
 
-    msg += "\n⚠ **Inativos +10 dias**\n"
+    msg+="\n⚠ **Inativos +10 dias**\n"
     if in10:
-        for nome, dias in sorted(in10, key=lambda x: x[1], reverse=True):
-            msg += f"{nome} — {dias} dias\n"
+        for nome,dias in sorted(in10,key=lambda x:x[1],reverse=True):
+            msg+=f"{nome} — {dias} dias\n"
     else:
-        msg += "_Nenhum_\n"
+        msg+="_Nenhum_\n"
 
-    msg += "\n❌ **Membros há mais de 20 dias sem tag 'Virtue' ou 'Culpa'**\n"
+    msg+="\n❌ **Membros há mais de 20 dias sem tag 'Virtue' ou 'Culpa'**\n"
     if membros_sem_tag:
-        for nome, dias, join_date in sorted(membros_sem_tag, key=lambda x: x[1], reverse=True):
+        for nome,dias,join_date in sorted(membros_sem_tag,key=lambda x:x[1],reverse=True):
             data_str = join_date.strftime("%d/%m/%Y")
-            msg += f"{nome} — {dias} dias — entrou em {data_str}\n"
+            msg+=f"{nome} — {dias} dias — entrou em {data_str}\n"
     else:
-        msg += "_Nenhum_\n"
+        msg+="_Nenhum_\n"
 
-    msg += "\n🏆 **5 membros mais antigos da guilda**\n"
-    for pos, (nome, data_entrada) in enumerate(antigos, start=1):
-        tempo = datetime.now(BRASIL) - data_entrada
-        dias = tempo.days
-        anos = dias // 365
-        meses = (dias % 365) // 30
-        ano_txt = "ano" if anos == 1 else "anos"
-        mes_txt = "mês" if meses == 1 else "meses"
-        if anos > 0 and meses > 0:
-            tempo_str = f"{anos} {ano_txt} e {meses} {mes_txt}"
-        elif anos > 0:
-            tempo_str = f"{anos} {ano_txt}"
-        elif meses > 0:
-            tempo_str = f"{meses} {mes_txt}"
+    msg+="\n🏆 **5 membros mais antigos da guilda**\n"
+    for pos,(nome,data_entrada) in enumerate(antigos,start=1):
+        tempo=datetime.now(BRASIL)-data_entrada
+        dias=tempo.days
+        anos=dias//365
+        meses=(dias%365)//30
+        ano_txt="ano" if anos==1 else "anos"
+        mes_txt="mês" if meses==1 else "meses"
+        if anos>0 and meses>0:
+            tempo_str=f"{anos} {ano_txt} e {meses} {mes_txt}"
+        elif anos>0:
+            tempo_str=f"{anos} {ano_txt}"
+        elif meses>0:
+            tempo_str=f"{meses} {mes_txt}"
         else:
-            tempo_str = f"{dias} dias"
+            tempo_str=f"{dias} dias"
 
-        if pos == 1:
-            posicao = "🥇"
-        elif pos == 2:
-            posicao = "🥈"
-        elif pos == 3:
-            posicao = "🥉"
+        if pos==1:
+            posicao="🥇"
+        elif pos==2:
+            posicao="🥈"
+        elif pos==3:
+            posicao="🥉"
         else:
-            posicao = f"{pos}️⃣"
+            posicao=f"{pos}️⃣"
 
-        msg += f"{posicao} {nome} — {tempo_str}\n"
-
+        msg+=f"{posicao} {nome} — {tempo_str}\n"
     return msg
 
 # -----------------------
@@ -230,8 +242,8 @@ print("Bot auditoria iniciado")
 
 while True:
     try:
-        in20, in10, antigos, membros_sem_tag = analisar()
-        msg = gerar_msg(in20, in10, antigos, membros_sem_tag)
+        in20,in10,antigos,membros_sem_tag=analisar()
+        msg=gerar_msg(in20,in10,antigos,membros_sem_tag)
         if mensagem_id:
             editar(msg)
         else:
@@ -239,5 +251,5 @@ while True:
         print("Próxima análise em 24h")
         time.sleep(INTERVALO)
     except Exception as e:
-        print("Erro:", e)
+        print("Erro:",e)
         time.sleep(60)
