@@ -239,16 +239,18 @@ def gerar_msg(in20, in10, antigos, membros_sem_tag):
 ❌ **Inativos +20 dias**
 """
 
-    if in20:
-        for nome, dias in sorted(in20, key=lambda x: x[1], reverse=True):
-            if dias >= 30:
-        dias_txt = "30+ dias"
-    else:
-        dias_txt = f"{dias} dias"
+if in20:
+    for nome, dias in sorted(in20, key=lambda x: x[1], reverse=True):
 
-    msg += f"{nome} — {dias_txt}\n"
-    else:
-        msg += "_Nenhum_\n"
+        if dias >= 30:
+            dias_txt = "30+ dias"
+        else:
+            dias_txt = f"{dias} dias"
+
+        msg += f"{nome} — {dias_txt}\n"
+
+else:
+    msg += "_Nenhum_\n"
 
     msg += "\n⚠ **Inativos +10 dias**\n"
 
