@@ -17,7 +17,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 # CONFIGURAÇÃO
 # -----------------------
 GUILD_URL = "https://www.rucoyonline.com/guild/Guilt%20Of%20Virtue"
-WEBHOOK = "https://discord.com/api/webhooks/1481362798326972448/aRQkId2Le1rzymVrtXQHRgxv2c6RU7GPMrCcg7R6sQ_FXfGQv6xeaJjrOtCXYArL57Up"
+WEBHOOK = "SEU_WEBHOOK_AQUI"  # coloque aqui seu webhook do Discord
 
 ARQUIVO_ESTADO = "estado_msg.json"
 INTERVALO = 86400  # 24h
@@ -84,17 +84,15 @@ def pegar_membros():
     return membros, guild_datas
 
 # -----------------------
-# CONFIGURAÇÃO SELENIUM HEADLESS
+# CONFIGURAÇÃO SELENIUM HEADLESS COM CHROME NORMAL
 # -----------------------
 chrome_options = Options()
+chrome_options.binary_location = "/usr/bin/google-chrome"  # ajuste para o caminho do seu Chrome
 chrome_options.add_argument("--headless")
 chrome_options.add_argument("--disable-gpu")
 chrome_options.add_argument("--no-sandbox")
 chrome_options.add_argument("--disable-dev-shm-usage")
 chrome_options.add_argument("--log-level=3")
-
-# Ajuste para o caminho do Chromium no seu VPS
-chrome_options.binary_location = "/usr/bin/chromium-browser"
 
 service = Service(ChromeDriverManager().install())
 
@@ -106,7 +104,7 @@ def last_online_selenium(nome):
         driver = webdriver.Chrome(service=service, options=chrome_options)
         url = f"https://www.rucoyonline.com/characters/{nome.replace(' ','%20')}"
         driver.get(url)
-        time.sleep(1.5)  # espera JS carregar
+        time.sleep(1.5)  # espera carregar
         texto = driver.page_source.lower()
         driver.quit()
 
@@ -158,7 +156,7 @@ def analisar():
     # 5 membros mais antigos
     antigos = sorted(guild_datas.items(), key=lambda x: x[1])[:5]
 
-    # membros sem tag +20 dias (apenas pelo site da guilda)
+    # membros sem tag +20 dias
     hoje = datetime.now(BRASIL)
     membros_sem_tag=[]
     for nome, join_date in guild_datas.items():
