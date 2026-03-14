@@ -219,27 +219,31 @@ def analisar():
 
     salvar_membros(membros_atuais)
 
-    # =========================
-    # DETECTAR LEVEL UPS
-    # =========================
+# =========================
+# DETECTAR LEVEL UPS / DOWNS
+# =========================
 
-    levels_antigos = carregar_levels()
-    level_ups = []
+levels_antigos = carregar_levels()
 
-    if levels_antigos:
+level_ups = []
+level_downs = []
 
-        for nome, level in levels_atuais.items():
+if levels_antigos:
 
-            if nome in levels_antigos:
+    for nome, level in levels_atuais.items():
 
-                diff = level - levels_antigos[nome]
+        if nome in levels_antigos:
 
-                if diff > 0:
-                    level_ups.append(
-                        (nome, levels_antigos[nome], level, diff)
-                    )
+            antigo = levels_antigos[nome]
+            diff = level - antigo
 
-    salvar_levels(levels_atuais)
+            if diff > 0:
+                level_ups.append((nome, antigo, level, diff))
+
+            elif diff < 0:
+                level_downs.append((nome, antigo, level, abs(diff)))
+
+salvar_levels(levels_atuais)
 
     # =========================
     # INATIVOS
@@ -297,7 +301,8 @@ def analisar():
         membros_sem_tag,
         entraram,
         sairam,
-        level_ups
+        level_ups,
+        level_downs
     )
 
 # =========================
@@ -333,7 +338,7 @@ def dias_para_tempo(dias):
 
     return " e ".join(partes)
     
-def gerar_msg(in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups):
+def gerar_msg(in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups, level_downs):
 
     agora = datetime.now(BRASIL)
     data = agora.strftime("%d/%m/%Y")
@@ -384,6 +389,21 @@ _🕒 Atualizado em: {data} • {hora} (Brasil)_
     else:
         msg += "_Nenhum_\n"
 
+# =========================
+# LEVEL DOWNS
+# =========================
+
+msg += "\n📉 **Level down da guilda**\n"
+
+if level_downs:
+
+    for nome, antigo, novo, diff in sorted(level_downs, key=lambda x: x[3], reverse=True):
+
+        msg += f"_{nome} ➤ {antigo} ← {novo} (-{diff})_\n"
+
+else:
+    msg += "_Nenhum_\n"
+    
     # =========================
     # INATIVOS +20
     # =========================
@@ -481,8 +501,8 @@ print("Bot auditoria iniciado")
 
 while True:
     try:
-        in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups = analisar()
-        msg = gerar_msg(in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups)
+        in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups, level_downs = analisar()
+        msg = gerar_msg(in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups, level_downs)
 
         if mensagem_id:
             editar(msg)
