@@ -344,17 +344,15 @@ def gerar_msg(in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups,
     data = agora.strftime("%d/%m/%Y")
     hora = agora.strftime("%H:%M")
 
-    msg = f"""📊 ═══════ **AUDITORIA DA GUILDA** ═══════ 📊
-
-_🕒 Atualizado em: {data} • {hora} (Brasil)_
+    msg = f"""_🕒 Atualizado em: {data} • {hora} (Brasil)_
 """
 
     # =========================
     # ENTRARAM / SAIRAM
     # =========================
 
-    msg += "\n━━━━━━━━━━━━━━━━━━━━\n"
-    msg += "📥 **Entraram na guilda**\n"
+    msg += "\n\n📊 ═══════ **AUDITORIA DA GUILDA** ═══════ 📊"
+    msg += "\n\n📥 **Entraram na guilda**\n"
 
     if entraram:
         for nome in sorted(entraram):
@@ -374,8 +372,7 @@ _🕒 Atualizado em: {data} • {hora} (Brasil)_
     # LEVEL UPS
     # =========================
 
-    msg += "\n━━━━━━━━━━━━━━━━━━━━\n"
-    msg += "📈 **Level ups da guilda**\n"
+    msg += "\n📈 **Level ups da guilda**\n"
 
     if level_ups:
         for nome, antigo, novo, diff in sorted(level_ups, key=lambda x: x[3], reverse=True):
@@ -391,7 +388,7 @@ _🕒 Atualizado em: {data} • {hora} (Brasil)_
 
     if level_downs:
         for nome, antigo, novo, diff in sorted(level_downs, key=lambda x: x[3], reverse=True):
-            msg += f"_{nome} ➤ {antigo} ← {novo} (-{diff})_\n"
+            msg += f"_{nome} ➤ {antigo} → {novo} (-{diff})_\n"
     else:
         msg += "_Nenhum_\n"
 
@@ -399,8 +396,7 @@ _🕒 Atualizado em: {data} • {hora} (Brasil)_
     # INATIVOS +20
     # =========================
 
-    msg += "\n━━━━━━━━━━━━━━━━━━━━\n"
-    msg += "🚫 **Inativos há mais de 20 dias**\n"
+    msg += "\n🚫 **Inativos há mais de 20 dias**\n"
 
     if in20:
         for nome, dias in sorted(in20, key=lambda x: x[1], reverse=True):
