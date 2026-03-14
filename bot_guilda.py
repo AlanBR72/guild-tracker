@@ -492,7 +492,7 @@ else:
 
         msg += f"{medalha} _{nome} ➤ {tempo_str}_\n"
 
-    return msg
+        return msg
 
 # =========================
 # LOOP PRINCIPAL
