@@ -203,30 +203,30 @@ def analisar():
     membros, guild_datas, levels_atuais = pegar_membros()
     print(f"{len(membros)} membros encontrados")
 
-# =========================
-# ESTATÍSTICAS DE LEVEL
-# =========================
+    # =========================
+    # ESTATÍSTICAS DE LEVEL
+    # =========================
 
-distribuicao = {
-    "800-899": 0,
-    "700-799": 0,
-    "600-699": 0,
-    "500-599": 0
-}
+    distribuicao = {
+        "800-899": 0,
+        "700-799": 0,
+        "600-699": 0,
+        "500-599": 0
+    }
 
-for level in levels_atuais.values():
+    for level in levels_atuais.values():
 
-    if level >= 800:
-        distribuicao["800-899"] += 1
+        if level >= 800:
+            distribuicao["800-899"] += 1
 
-    elif level >= 700:
-        distribuicao["700-799"] += 1
+        elif level >= 700:
+            distribuicao["700-799"] += 1
 
-    elif level >= 600:
-        distribuicao["600-699"] += 1
+        elif level >= 600:
+            distribuicao["600-699"] += 1
 
-    elif level >= 500:
-        distribuicao["500-599"] += 1
+        elif level >= 500:
+            distribuicao["500-599"] += 1
 
     top_levels = sorted(levels_atuais.items(), key=lambda x: x[1], reverse=True)[:5]
 
