@@ -232,6 +232,8 @@ def analisar():
 
     forca_guilda = sum(levels_atuais.values())
 
+    media_level = sum(levels_atuais.values()) / len(levels_atuais)
+
     # =========================
     # DETECTAR ENTRADAS / SAÍDAS
     # =========================
@@ -323,19 +325,21 @@ def analisar():
         ):
             membros_sem_tag.append((nome, dias_na_guilda, join_date))
 
-    return (
-        in20,
-        in10,
-        antigos,
-        membros_sem_tag,
-        entraram,
-        sairam,
-        level_ups,
-        level_downs,
-        distribuicao,
-        top_levels,
-        forca_guilda
-    )
+        return (
+            in20,
+            in10,
+            antigos,
+            membros_sem_tag,
+            entraram,
+            sairam,
+            level_ups,
+            level_downs,
+            distribuicao,
+            top_levels,
+            forca_guilda,
+            len(membros),
+            media_level
+        )
     
 # =========================
 # GERAR MENSAGEM
@@ -380,7 +384,7 @@ def formatar_k(valor):
     else:
         return str(valor)
     
-def gerar_msg(in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups, level_downs, distribuicao, top_levels, forca_guilda):
+def gerar_msg(in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups, level_downs, distribuicao, top_levels, forca_guilda, total_membros, media_level):
 
     agora = datetime.now(BRASIL)
     data = agora.strftime("%d/%m/%Y")
@@ -483,8 +487,9 @@ def gerar_msg(in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups,
     forca_txt = formatar_k(forca_guilda)
 
     msg3 += "**🏆 ═══════ ESTATÍSTICAS DA GUILDA ═══════ 🏆**\n\n"
-    msg3 += f"👥 **Membros:** {len(membros)}\n"
+    msg3 += f"👥 **Membros:** {total_membros}\n"
     msg3 += f"💪 **Força da Guilda:** _{forca_txt}_\n\n"
+    msg3 += f"⚔️ **Média de level da guilda:** _{media_level}_\n"
 
     msg3 += "🏆 **Top 5 maiores levels da guilda**\n"
 
@@ -552,7 +557,7 @@ print("Bot auditoria iniciado")
 
 while True:
     try:
-        in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups, level_downs, distribuicao, top_levels, forca_guilda = analisar()
+        in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups, level_downs, distribuicao, top_levels, forca_guilda, total_membros, media_level = analisar()
 
         msg1, msg2, msg3 = gerar_msg(
             in20,
@@ -565,7 +570,9 @@ while True:
             level_downs,
             distribuicao,
             top_levels,
-            forca_guilda
+            forca_guilda,
+            total_membros,
+            media_level
         )
 
         if mensagem_id:
