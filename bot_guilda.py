@@ -378,32 +378,23 @@ _🕒 Atualizado em: {data} • {hora} (Brasil)_
     msg += "📈 **Level ups da guilda**\n"
 
     if level_ups:
-
         for nome, antigo, novo, diff in sorted(level_ups, key=lambda x: x[3], reverse=True):
-
-            if diff == 1:
-                msg += f"_{nome} ➤ {antigo} → {novo} (+1)_\n"
-            else:
-                msg += f"_{nome} ➤ {antigo} → {novo} (+{diff})_\n"
-
+            msg += f"_{nome} ➤ {antigo} → {novo} (+{diff})_\n"
     else:
         msg += "_Nenhum_\n"
 
-# =========================
-# LEVEL DOWNS
-# =========================
+    # =========================
+    # LEVEL DOWNS
+    # =========================
 
-msg += "\n📉 **Level down da guilda**\n"
+    msg += "\n📉 **Level down da guilda**\n"
 
-if level_downs:
+    if level_downs:
+        for nome, antigo, novo, diff in sorted(level_downs, key=lambda x: x[3], reverse=True):
+            msg += f"_{nome} ➤ {antigo} ← {novo} (-{diff})_\n"
+    else:
+        msg += "_Nenhum_\n"
 
-    for nome, antigo, novo, diff in sorted(level_downs, key=lambda x: x[3], reverse=True):
-
-        msg += f"_{nome} ➤ {antigo} ← {novo} (-{diff})_\n"
-
-else:
-    msg += "_Nenhum_\n"
-    
     # =========================
     # INATIVOS +20
     # =========================
@@ -420,7 +411,6 @@ else:
                 dias_txt = f"{dias} dias"
 
             msg += f"_{nome} ➤ {dias_txt}_\n"
-
     else:
         msg += "_Nenhum_\n"
 
@@ -443,19 +433,16 @@ else:
     msg += "\n❌ **Membros há mais de 20 dias sem tag (Virtue / Culpa):**\n"
 
     if membros_sem_tag:
-        for nome, dias, join_date in sorted(
-            membros_sem_tag, key=lambda x: x[1], reverse=True
-        ):
+        for nome, dias, join_date in sorted(membros_sem_tag, key=lambda x: x[1], reverse=True):
             tempo_txt = dias_para_tempo(dias)
             msg += f"_{nome} ➤ {tempo_txt}_\n"
-
     else:
         msg += "_Nenhum_\n"
 
     # =========================
     # MAIS ANTIGOS
     # =========================
-    
+
     msg += "\n🏆 **5 Membros mais antigos da guilda:**\n"
 
     for pos, (nome, data_entrada) in enumerate(antigos, start=1):
@@ -492,7 +479,7 @@ else:
 
         msg += f"{medalha} _{nome} ➤ {tempo_str}_\n"
 
-        return msg
+    return msg
 
 # =========================
 # LOOP PRINCIPAL
