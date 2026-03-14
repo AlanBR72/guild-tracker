@@ -543,12 +543,16 @@ print("Bot auditoria iniciado")
 while True:
     try:
         in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups, level_downs, distribuicao, top_levels, forca_guilda = analisar()
-        msg = gerar_msg(in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups, level_downs, distribuicao, top_levels, forca_guilda)
+        msg1, msg2, msg3 = gerar_msg = gerar_msg(in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups, level_downs, distribuicao, top_levels, forca_guilda)
         
         if mensagem_id:
-            editar(msg)
+            editar(msg1)
+            editar(msg2)
+            editar(msg3)
         else:
-            enviar(msg)
+            enviar(msg1)
+            enviar(msg2)
+            enviar(msg3)
 
         print("Próxima análise em 24h")
         time.sleep(INTERVALO)
