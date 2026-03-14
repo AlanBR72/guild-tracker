@@ -204,6 +204,35 @@ def analisar():
     print(f"{len(membros)} membros encontrados")
 
     # =========================
+    # ESTATÍSTICAS DE LEVEL
+    # =========================
+
+    distribuicao = {
+        "800-899": 0,
+        "700-799": 0,
+        "600-699": 0
+        "500-599": 0
+    }
+
+    for level in levels_atuais.values():
+
+        elif level >= 800:
+            distribuicao["800-899"] += 1
+
+        elif level >= 700:
+            distribuicao["700-799"] += 1
+
+        elif level >= 600:
+            distribuicao["600-699"] += 1
+
+        elif level >= 500:
+            distribuicao["500-599"] += 1
+
+    top_levels = sorted(levels_atuais.items(), key=lambda x: x[1], reverse=True)[:5]
+
+    forca_guilda = sum(levels_atuais.values())
+
+    # =========================
     # DETECTAR ENTRADAS / SAÍDAS
     # =========================
 
@@ -302,7 +331,10 @@ def analisar():
         entraram,
         sairam,
         level_ups,
-        level_downs
+        level_downs,
+        distribuicao,
+        top_levels,
+        forca_guilda
     )
     
 # =========================
@@ -337,15 +369,24 @@ def dias_para_tempo(dias):
             partes.append(f"{resto_dias} dias")
 
     return " e ".join(partes)
+
+# =========================
+# FORMATAR NUMERO EM K
+# =========================
+def formatar_k(valor):
+
+    if valor >= 1000:
+        return f"{valor/1000:.1f}k"
+    else:
+        return str(valor)
     
-def gerar_msg(in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups, level_downs):
+def gerar_msg(in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups, level_downs, distribuicao, top_levels, forca_guilda):
 
     agora = datetime.now(BRASIL)
     data = agora.strftime("%d/%m/%Y")
     hora = agora.strftime("%H:%M")
 
-    msg = f"""_🕒 Atualizado em: {data} • {hora} (Brasil)_
-"""
+    msg = f"""_🕒 Atualizado em: {data} • {hora} (Brasil)_"""
 
     # =========================
     # ENTRARAM / SAIRAM
@@ -471,9 +512,26 @@ def gerar_msg(in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups,
         else:
             tempo_str = f"{dias} dias"
 
-        medalha = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣"][pos - 1]
+        medalha = ["🥇", "🥈", "🥉", "🎖️", "🏅"][pos - 1]
 
         msg += f"{medalha} _{nome} ➤ {tempo_str}_\n"
+        forca_txt = formatar_k(forca_guilda)
+        msg += f"\n\n💪 **Força da Guilda:** _{forca_txt}_\n"
+
+        msg += "\n🏆 **Top 5 maiores levels da guilda**\n"
+
+        for pos, (nome, level) in enumerate(top_levels, start=1):
+
+            medalha = ["🔥","🥈","🥉","4️⃣","5️⃣"][pos-1]
+
+            msg += f"{medalha} _{nome} ➤ level {level}_\n"
+
+
+        msg += "\n📊 **Distribuição de levels**\n"
+        msg += f"_Level 800-899 ➤ {distribuicao['800-899']} membros_\n"
+        msg += f"_Level 700-799 ➤ {distribuicao['700-799']} membros_\n"
+        msg += f"_Level 600-699 ➤ {distribuicao['600-699']} membros_\n"
+        msg += f"_Level 500-599 ➤ {distribuicao['500-599']} membros_\n"
 
     return msg
 
@@ -484,9 +542,9 @@ print("Bot auditoria iniciado")
 
 while True:
     try:
-        in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups, level_downs = analisar()
-        msg = gerar_msg(in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups, level_downs)
-
+        in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups, level_downs, distribuicao, top_levels, forca_guilda = analisar()
+        msg = gerar_msg(in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups, level_downs, distribuicao, top_levels, forca_guilda)
+        
         if mensagem_id:
             editar(msg)
         else:
