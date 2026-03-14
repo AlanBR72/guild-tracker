@@ -307,39 +307,40 @@ def analisar():
 
     antigos = sorted(guild_datas.items(), key=lambda x: x[1])[:5]
 
-    # =========================
-    # MEMBROS SEM TAG
-    # =========================
+# =========================
+# MEMBROS SEM TAG
+# =========================
 
-    hoje = datetime.now(BRASIL)
-    membros_sem_tag = []
+hoje = datetime.now(BRASIL)
+membros_sem_tag = []
 
-    for nome, join_date in guild_datas.items():
+for nome, join_date in guild_datas.items():
 
-        dias_na_guilda = (hoje - join_date).days
+    dias_na_guilda = (hoje - join_date).days
 
-        if (
-            dias_na_guilda > 20
-            and "virtue" not in nome.lower()
-            and "culpa" not in nome.lower()
-        ):
-            membros_sem_tag.append((nome, dias_na_guilda, join_date))
+    if (
+        dias_na_guilda > 20
+        and "virtue" not in nome.lower()
+        and "culpa" not in nome.lower()
+    ):
+        membros_sem_tag.append((nome, dias_na_guilda, join_date))
 
-        return (
-            in20,
-            in10,
-            antigos,
-            membros_sem_tag,
-            entraram,
-            sairam,
-            level_ups,
-            level_downs,
-            distribuicao,
-            top_levels,
-            forca_guilda,
-            len(membros),
-            media_level
-        )
+
+return (
+    in20,
+    in10,
+    antigos,
+    membros_sem_tag,
+    entraram,
+    sairam,
+    level_ups,
+    level_downs,
+    distribuicao,
+    top_levels,
+    forca_guilda,
+    len(membros),
+    media_level
+)
     
 # =========================
 # GERAR MENSAGEM
@@ -488,8 +489,8 @@ def gerar_msg(in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups,
 
     msg3 += "**🏆 ═══════ ESTATÍSTICAS DA GUILDA ═══════ 🏆**\n\n"
     msg3 += f"👥 **Membros:** {total_membros}\n"
-    msg3 += f"💪 **Força da Guilda:** _{forca_txt}_\n\n"
-    msg3 += f"⚔️ **Média de level da guilda:** _{media_level}_\n"
+    msg3 += f"💪 **Força da Guilda:** _{forca_txt}_\n"
+    msg3 += f"⚔️ **Média de level da guilda:** _{media_level}_\n\n"
 
     msg3 += "🏆 **Top 5 maiores levels da guilda**\n"
 
