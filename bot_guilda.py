@@ -386,58 +386,60 @@ def gerar_msg(in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups,
     data = agora.strftime("%d/%m/%Y")
     hora = agora.strftime("%H:%M")
 
-    msg = f"""_🕒 Atualizado em: {data} • {hora} (Brasil)_"""
+    msg1 = f"""_🕒 Atualizado em: {data} • {hora} (Brasil)_"""
+    msg2 = ""
+    msg3 = ""
 
     # =========================
-    # ENTRARAM / SAIRAM
+    # ENTRARAM / SAÍRAM
     # =========================
 
-    msg += "\n\n📊 ═══════ **AUDITORIA DA GUILDA** ═══════ 📊"
-    msg += "\n\n📥 **Entraram na guilda**\n"
+    msg1 += "\n\n📊 ═══════ **AUDITORIA DA GUILDA** ═══════ 📊"
+    msg1 += "\n\n📥 **Entraram na guilda**\n"
 
     if entraram:
         for nome in sorted(entraram):
-            msg += f"_{nome}_\n"
+            msg1 += f"_{nome}_\n"
     else:
-        msg += "_Nenhum_\n"
+        msg1 += "_Nenhum_\n"
 
-    msg += "\n📤 **Saíram da guilda**\n"
+    msg1 += "\n📤 **Saíram da guilda**\n"
 
     if sairam:
         for nome in sorted(sairam):
-            msg += f"_{nome}_\n"
+            msg1 += f"_{nome}_\n"
     else:
-        msg += "_Nenhum_\n"
+        msg1 += "_Nenhum_\n"
 
     # =========================
     # LEVEL UPS
     # =========================
 
-    msg += "\n📈 **Level ups da guilda**\n"
+    msg1 += "\n📈 **Level ups da guilda**\n"
 
     if level_ups:
         for nome, antigo, novo, diff in sorted(level_ups, key=lambda x: x[3], reverse=True):
-            msg += f"_{nome} ➤ {antigo} → {novo} (+{diff})_\n"
+            msg1 += f"_{nome} ➤ {antigo} → {novo} (+{diff})_\n"
     else:
-        msg += "_Nenhum_\n"
+        msg1 += "_Nenhum_\n"
 
     # =========================
     # LEVEL DOWNS
     # =========================
 
-    msg += "\n📉 **Level down da guilda**\n"
+    msg1 += "\n📉 **Level down da guilda**\n"
 
     if level_downs:
         for nome, antigo, novo, diff in sorted(level_downs, key=lambda x: x[3], reverse=True):
-            msg += f"_{nome} ➤ {antigo} → {novo} (-{diff})_\n"
+            msg1 += f"_{nome} ➤ {antigo} → {novo} (-{diff})_\n"
     else:
-        msg += "_Nenhum_\n"
+        msg1 += "_Nenhum_\n"
 
     # =========================
     # INATIVOS +20
     # =========================
 
-    msg += "\n🚫 **Inativos há mais de 20 dias**\n"
+    msg2 += "\n🚫 **Inativos há mais de 20 dias**\n"
 
     if in20:
         for nome, dias in sorted(in20, key=lambda x: x[1], reverse=True):
@@ -447,40 +449,40 @@ def gerar_msg(in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups,
             else:
                 dias_txt = f"{dias} dias"
 
-            msg += f"_{nome} ➤ {dias_txt}_\n"
+            msg2 += f"_{nome} ➤ {dias_txt}_\n"
     else:
-        msg += "_Nenhum_\n"
+        msg2 += "_Nenhum_\n"
 
     # =========================
     # INATIVOS +10
     # =========================
 
-    msg += "\n⚠️ **Inativos há mais de 10 dias**\n"
+    msg2 += "\n⚠️ **Inativos há mais de 10 dias**\n"
 
     if in10:
         for nome, dias in sorted(in10, key=lambda x: x[1], reverse=True):
-            msg += f"_{nome} ➤ {dias} dias_\n"
+            msg2 += f"_{nome} ➤ {dias} dias_\n"
     else:
-        msg += "_Nenhum_\n"
+        msg2 += "_Nenhum_\n"
 
     # =========================
     # SEM TAG
     # =========================
 
-    msg += "\n❌ **Membros há mais de 20 dias sem tag (Virtue / Culpa):**\n"
+    msg2 += "\n❌ **Membros há mais de 20 dias sem tag (Virtue / Culpa):**\n"
 
     if membros_sem_tag:
         for nome, dias, join_date in sorted(membros_sem_tag, key=lambda x: x[1], reverse=True):
             tempo_txt = dias_para_tempo(dias)
-            msg += f"_{nome} ➤ {tempo_txt}_\n"
+            msg2 += f"_{nome} ➤ {tempo_txt}_\n"
     else:
-        msg += "_Nenhum_\n"
+        msg2 += "_Nenhum_\n"
 
     # =========================
     # MAIS ANTIGOS
     # =========================
 
-    msg += "\n🏆 **5 Membros mais antigos da guilda:**\n"
+    msg3 += "\n🏆 **5 Membros mais antigos da guilda:**\n"
 
     for pos, (nome, data_entrada) in enumerate(antigos, start=1):
 
@@ -514,27 +516,28 @@ def gerar_msg(in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups,
 
         medalha = ["🥇", "🥈", "🥉", "🎖️", "🏅"][pos - 1]
 
-        msg += f"{medalha} _{nome} ➤ {tempo_str}_\n"
-        forca_txt = formatar_k(forca_guilda)
-        msg += f"\n\n💪 **Força da Guilda:** _{forca_txt}_\n"
+        msg3 += f"{medalha} _{nome} ➤ {tempo_str}_\n"
 
-        msg += "\n🏆 **Top 5 maiores levels da guilda**\n"
+    forca_txt = formatar_k(forca_guilda)
 
-        for pos, (nome, level) in enumerate(top_levels, start=1):
+    msg3 += f"\n\n💪 **Força da Guilda:** _{forca_txt}_\n"
 
-            medalha = ["🔥","🥈","🥉","4️⃣","5️⃣"][pos-1]
+    msg3 += "\n🏆 **Top 5 maiores levels da guilda**\n"
 
-            msg += f"{medalha} _{nome} ➤ level {level}_\n"
+    for pos, (nome, level) in enumerate(top_levels, start=1):
 
+        medalha = ["🔥","🥈","🥉","4️⃣","5️⃣"][pos-1]
 
-        msg += "\n📊 **Distribuição de levels**\n"
-        msg += f"_Level 800-899 ➤ {distribuicao['800-899']} membros_\n"
-        msg += f"_Level 700-799 ➤ {distribuicao['700-799']} membros_\n"
-        msg += f"_Level 600-699 ➤ {distribuicao['600-699']} membros_\n"
-        msg += f"_Level 500-599 ➤ {distribuicao['500-599']} membros_\n"
+        msg3 += f"{medalha} _{nome} ➤ level {level}_\n"
+
+    msg3 += "\n📊 **Distribuição de levels**\n"
+    msg3 += f"_Level 800-899 ➤ {distribuicao['800-899']} membros_\n"
+    msg3 += f"_Level 700-799 ➤ {distribuicao['700-799']} membros_\n"
+    msg3 += f"_Level 600-699 ➤ {distribuicao['600-699']} membros_\n"
+    msg3 += f"_Level 500-599 ➤ {distribuicao['500-599']} membros_\n"
 
     return msg1, msg2, msg3
-
+    
 # =========================
 # LOOP PRINCIPAL
 # =========================
