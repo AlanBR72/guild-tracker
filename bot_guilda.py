@@ -219,31 +219,31 @@ def analisar():
 
     salvar_membros(membros_atuais)
 
-# =========================
-# DETECTAR LEVEL UPS / DOWNS
-# =========================
+    # =========================
+    # DETECTAR LEVEL UPS / DOWNS
+    # =========================
 
-levels_antigos = carregar_levels()
+    levels_antigos = carregar_levels()
 
-level_ups = []
-level_downs = []
+    level_ups = []
+    level_downs = []
 
-if levels_antigos:
+    if levels_antigos:
 
-    for nome, level in levels_atuais.items():
+        for nome, level in levels_atuais.items():
 
-        if nome in levels_antigos:
+            if nome in levels_antigos:
 
-            antigo = levels_antigos[nome]
-            diff = level - antigo
+                antigo = levels_antigos[nome]
+                diff = level - antigo
 
-            if diff > 0:
-                level_ups.append((nome, antigo, level, diff))
+                if diff > 0:
+                    level_ups.append((nome, antigo, level, diff))
 
-            elif diff < 0:
-                level_downs.append((nome, antigo, level, abs(diff)))
+                elif diff < 0:
+                    level_downs.append((nome, antigo, level, abs(diff)))
 
-salvar_levels(levels_atuais)
+    salvar_levels(levels_atuais)
 
     # =========================
     # INATIVOS
@@ -304,7 +304,7 @@ salvar_levels(levels_atuais)
         level_ups,
         level_downs
     )
-
+    
 # =========================
 # GERAR MENSAGEM
 # =========================
