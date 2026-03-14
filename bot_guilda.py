@@ -42,6 +42,17 @@ def carregar_estado():
 estado = carregar_estado()
 mensagem_id = estado.get("msg_id")
 
+def salvar_membros(lista):
+    with open("membros_guilda.json", "w", encoding="utf-8") as f:
+        json.dump(lista, f, ensure_ascii=False, indent=2)
+
+def carregar_membros():
+    if not os.path.exists("membros_guilda.json"):
+        return None
+
+    with open("membros_guilda.json", "r", encoding="utf-8") as f:
+        return json.load(f)
+
 
 # =========================
 # DISCORD
@@ -156,6 +167,26 @@ def analisar():
     membros, guild_datas = pegar_membros()
     print(f"{len(membros)} membros encontrados")
 
+    # =========================
+    # DETECTAR ENTRADAS / SAÍDAS
+    # =========================
+
+    membros_atuais = membros
+    membros_antigos = carregar_membros()
+
+    entraram = []
+    sairam = []
+
+    if membros_antigos is not None:
+        entraram = list(set(membros_atuais) - set(membros_antigos))
+        sairam = list(set(membros_antigos) - set(membros_atuais))
+
+    salvar_membros(membros_atuais)
+
+    # =========================
+    # INATIVOS
+    # =========================
+
     in20 = []
     in10 = []
 
@@ -174,10 +205,16 @@ def analisar():
             elif dias >= 10:
                 in10.append((nome, dias))
 
-    # membros mais antigos
+    # =========================
+    # MEMBROS MAIS ANTIGOS
+    # =========================
+
     antigos = sorted(guild_datas.items(), key=lambda x: x[1])[:5]
 
-    # membros sem tag
+    # =========================
+    # MEMBROS SEM TAG
+    # =========================
+
     hoje = datetime.now(BRASIL)
     membros_sem_tag = []
 
@@ -191,8 +228,7 @@ def analisar():
         ):
             membros_sem_tag.append((nome, dias_na_guilda, join_date))
 
-    return in20, in10, antigos, membros_sem_tag
-
+    return in20, in10, antigos, membros_sem_tag, entraram, sairam
 
 # =========================
 # GERAR MENSAGEM
@@ -227,7 +263,7 @@ def dias_para_tempo(dias):
 
     return " e ".join(partes)
     
-def gerar_msg(in20, in10, antigos, membros_sem_tag):
+def gerar_msg(in20, in10, antigos, membros_sem_tag, entraram, sairam):
 
     agora = datetime.now(BRASIL)
     data = agora.strftime("%d/%m/%Y")
@@ -236,11 +272,35 @@ def gerar_msg(in20, in10, antigos, membros_sem_tag):
     msg = f"""📊 ═══════ **AUDITORIA DA GUILDA** ═══════ 📊
 
 _🕒 Atualizado em: {data} • {hora} (Brasil)_
-
-━━━━━━━━━━━━━━━━━━━━
-🚫 **Inativos há mais de 20 dias**
 """
 
+    # =========================
+    # ENTRARAM / SAIRAM
+    # =========================
+
+    msg += "\n━━━━━━━━━━━━━━━━━━━━\n"
+    msg += "📥 **Entraram na guilda**\n"
+
+    if entraram:
+        for nome in sorted(entraram):
+            msg += f"_{nome}_\n"
+    else:
+        msg += "_Nenhum_\n"
+
+    msg += "\n📤 **Saíram da guilda**\n"
+
+    if sairam:
+        for nome in sorted(sairam):
+            msg += f"_{nome}_\n"
+    else:
+        msg += "_Nenhum_\n"
+
+    # =========================
+    # INATIVOS +20
+    # =========================
+
+    msg += "\n━━━━━━━━━━━━━━━━━━━━\n"
+    msg += "🚫 **Inativos há mais de 20 dias**\n"
 
     if in20:
         for nome, dias in sorted(in20, key=lambda x: x[1], reverse=True):
@@ -255,6 +315,10 @@ _🕒 Atualizado em: {data} • {hora} (Brasil)_
     else:
         msg += "_Nenhum_\n"
 
+    # =========================
+    # INATIVOS +10
+    # =========================
+
     msg += "\n⚠️ **Inativos há mais de 10 dias**\n"
 
     if in10:
@@ -263,19 +327,26 @@ _🕒 Atualizado em: {data} • {hora} (Brasil)_
     else:
         msg += "_Nenhum_\n"
 
+    # =========================
+    # SEM TAG
+    # =========================
+
     msg += "\n❌ **Membros há mais de 20 dias sem tag (Virtue / Culpa):**\n"
 
     if membros_sem_tag:
         for nome, dias, join_date in sorted(
             membros_sem_tag, key=lambda x: x[1], reverse=True
         ):
-
             tempo_txt = dias_para_tempo(dias)
             msg += f"_{nome} ➤ {tempo_txt}_\n"
 
     else:
         msg += "_Nenhum_\n"
 
+    # =========================
+    # MAIS ANTIGOS
+    # =========================
+    
     msg += "\n🏆 **5 Membros mais antigos da guilda:**\n"
 
     for pos, (nome, data_entrada) in enumerate(antigos, start=1):
@@ -285,7 +356,6 @@ _🕒 Atualizado em: {data} • {hora} (Brasil)_
         anos = dias // 365
         meses = (dias % 365) // 30
 
-        # plural correto
         if anos == 1:
             ano_txt = "1 ano"
         elif anos > 1:
@@ -300,7 +370,6 @@ _🕒 Atualizado em: {data} • {hora} (Brasil)_
         else:
             mes_txt = ""
 
-        # montar texto final
         if ano_txt and mes_txt:
             tempo_str = f"{ano_txt} e {mes_txt}"
         elif ano_txt:
