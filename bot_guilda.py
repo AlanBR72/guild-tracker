@@ -232,7 +232,7 @@ def analisar():
 
     forca_guilda = sum(levels_atuais.values())
 
-    media_level = sum(levels_atuais.values()) / len(levels_atuais)
+    media_level = round(sum(levels_atuais.values()) / len(levels_atuais))
 
     # =========================
     # DETECTAR ENTRADAS / SAÍDAS
