@@ -392,8 +392,8 @@ print("Bot auditoria iniciado")
 
 while True:
     try:
-        in20, in10, antigos, membros_sem_tag = analisar()
-        msg = gerar_msg(in20, in10, antigos, membros_sem_tag)
+        in20, in10, antigos, membros_sem_tag, entraram, sairam = analisar()
+        msg = gerar_msg(in20, in10, antigos, membros_sem_tag, entraram, sairam)
 
         if mensagem_id:
             editar(msg)
