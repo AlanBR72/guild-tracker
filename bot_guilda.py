@@ -439,7 +439,8 @@ def gerar_msg(in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups,
     # INATIVOS +20
     # =========================
 
-    msg2 += "\n🚫 **Inativos há mais de 20 dias**\n"
+    msg2 += "🚫 ═══════ INATIVOS ═══════ 🚫\n\n"
+    msg2 += "🚫 **Inativos há mais de 20 dias**\n"
 
     if in20:
         for nome, dias in sorted(in20, key=lambda x: x[1], reverse=True):
@@ -469,7 +470,8 @@ def gerar_msg(in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups,
     # SEM TAG
     # =========================
 
-    msg2 += "\n❌ **Membros há mais de 20 dias sem tag (Virtue / Culpa):**\n"
+    msg2 += "❌ ═══════ INATIVOS ═══════ ❌\n\n"
+    msg2 += "❌ **Membros há mais de 20 dias sem tag (Virtue / Culpa):**\n"
 
     if membros_sem_tag:
         for nome, dias, join_date in sorted(membros_sem_tag, key=lambda x: x[1], reverse=True):
@@ -478,10 +480,21 @@ def gerar_msg(in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups,
     else:
         msg2 += "_Nenhum_\n"
 
+        forca_txt = formatar_k(forca_guilda)
+
+        msg3 = "🏆 ═══════ ESTATÍSTICAS DA GUILDA ═══════ 🏆\n\n"
+        msg3 += f"👥 **Membros:** {len(membros)}\n"
+        msg3 += f"💪 **Força da Guilda:** _{forca_txt}_\n\n"
+        msg3 += "🏆 **Top 5 maiores levels da guilda**\n"
+
+    for pos, (nome, level) in enumerate(top_levels, start=1):
+
+        medalha = ["🔥","🥈","🥉","4️⃣","5️⃣"][pos-1]
+
+        msg3 += f"{medalha} _{nome} ➤ level {level}_\n"
     # =========================
     # MAIS ANTIGOS
     # =========================
-
     msg3 += "\n🏆 **5 Membros mais antigos da guilda:**\n"
 
     for pos, (nome, data_entrada) in enumerate(antigos, start=1):
@@ -517,18 +530,6 @@ def gerar_msg(in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups,
         medalha = ["🥇", "🥈", "🥉", "🎖️", "🏅"][pos - 1]
 
         msg3 += f"{medalha} _{nome} ➤ {tempo_str}_\n"
-
-    forca_txt = formatar_k(forca_guilda)
-
-    msg3 += f"\n\n💪 **Força da Guilda:** _{forca_txt}_\n"
-
-    msg3 += "\n🏆 **Top 5 maiores levels da guilda**\n"
-
-    for pos, (nome, level) in enumerate(top_levels, start=1):
-
-        medalha = ["🔥","🥈","🥉","4️⃣","5️⃣"][pos-1]
-
-        msg3 += f"{medalha} _{nome} ➤ level {level}_\n"
 
     msg3 += "\n📊 **Distribuição de levels**\n"
     msg3 += f"_Level 800-899 ➤ {distribuicao['800-899']} membros_\n"
