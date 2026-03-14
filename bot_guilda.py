@@ -53,6 +53,16 @@ def carregar_membros():
     with open("membros_guilda.json", "r", encoding="utf-8") as f:
         return json.load(f)
 
+def salvar_levels(levels):
+    with open("levels_guilda.json", "w", encoding="utf-8") as f:
+        json.dump(levels, f, ensure_ascii=False, indent=2)
+
+def carregar_levels():
+    if not os.path.exists("levels_guilda.json"):
+        return None
+
+    with open("levels_guilda.json", "r", encoding="utf-8") as f:
+        return json.load(f)
 
 # =========================
 # DISCORD
@@ -84,35 +94,61 @@ def editar(msg):
 # PEGAR MEMBROS DA GUILDA
 # =========================
 def pegar_membros():
+
     r = session.get(GUILD_URL, timeout=15)
     soup = BeautifulSoup(r.text, "html.parser")
 
     membros = []
     guild_datas = {}
+    levels = {}
 
     # tabela da guilda
-    linhas = soup.select("table tr")
+    tabela = soup.select_one("table")
+
+    if not tabela:
+        return membros, guild_datas, levels
+
+    linhas = tabela.select("tr")
 
     for row in linhas[1:]:
         cols = row.find_all("td")
+
+        if len(cols) < 3:
+            continue
+
         link = row.select_one("a[href*='/characters/']")
 
-        if not link or len(cols) < 3:
+        if not link:
             continue
 
         nome = link.get_text(strip=True)
+
+        # =========================
+        # LEVEL
+        # =========================
+        level_text = cols[1].get_text(strip=True)
+
+        try:
+            level = int(level_text)
+        except:
+            continue
+
+        # =========================
+        # DATA DE ENTRADA
+        # =========================
         join_text = cols[2].get_text(strip=True)
 
         try:
             join_date = datetime.strptime(join_text, "%b %d, %Y")
             join_date = BRASIL.localize(join_date)
-            guild_datas[nome] = join_date
-            membros.append(nome)
         except:
             continue
 
-    return membros, guild_datas
+        membros.append(nome)
+        guild_datas[nome] = join_date
+        levels[nome] = level
 
+    return membros, guild_datas, levels
 
 # =========================
 # PEGAR LAST ONLINE (CORRIGIDO)
@@ -159,12 +195,12 @@ def last_online_requests(nome):
         print(f"Erro ao pegar {nome}: {e}")
         return None
 
-
 # =========================
 # ANALISAR GUILDA
 # =========================
 def analisar():
-    membros, guild_datas = pegar_membros()
+
+    membros, guild_datas, levels_atuais = pegar_membros()
     print(f"{len(membros)} membros encontrados")
 
     # =========================
@@ -184,6 +220,28 @@ def analisar():
     salvar_membros(membros_atuais)
 
     # =========================
+    # DETECTAR LEVEL UPS
+    # =========================
+
+    levels_antigos = carregar_levels()
+    level_ups = []
+
+    if levels_antigos:
+
+        for nome, level in levels_atuais.items():
+
+            if nome in levels_antigos:
+
+                diff = level - levels_antigos[nome]
+
+                if diff > 0:
+                    level_ups.append(
+                        (nome, levels_antigos[nome], level, diff)
+                    )
+
+    salvar_levels(levels_atuais)
+
+    # =========================
     # INATIVOS
     # =========================
 
@@ -191,9 +249,11 @@ def analisar():
     in10 = []
 
     with ThreadPoolExecutor(max_workers=THREADS) as executor:
+
         futures = {executor.submit(last_online_requests, m): m for m in membros}
 
         for future in as_completed(futures):
+
             nome = futures[future]
             dias = future.result()
 
@@ -202,6 +262,7 @@ def analisar():
 
             if dias >= 20:
                 in20.append((nome, dias))
+
             elif dias >= 10:
                 in10.append((nome, dias))
 
@@ -219,6 +280,7 @@ def analisar():
     membros_sem_tag = []
 
     for nome, join_date in guild_datas.items():
+
         dias_na_guilda = (hoje - join_date).days
 
         if (
@@ -228,7 +290,15 @@ def analisar():
         ):
             membros_sem_tag.append((nome, dias_na_guilda, join_date))
 
-    return in20, in10, antigos, membros_sem_tag, entraram, sairam
+    return (
+        in20,
+        in10,
+        antigos,
+        membros_sem_tag,
+        entraram,
+        sairam,
+        level_ups
+    )
 
 # =========================
 # GERAR MENSAGEM
@@ -263,7 +333,7 @@ def dias_para_tempo(dias):
 
     return " e ".join(partes)
     
-def gerar_msg(in20, in10, antigos, membros_sem_tag, entraram, sairam):
+def gerar_msg(in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups):
 
     agora = datetime.now(BRASIL)
     data = agora.strftime("%d/%m/%Y")
@@ -296,6 +366,25 @@ _🕒 Atualizado em: {data} • {hora} (Brasil)_
         msg += "_Nenhum_\n"
 
     # =========================
+    # LEVEL UPS
+    # =========================
+
+    msg += "\n━━━━━━━━━━━━━━━━━━━━\n"
+    msg += "📈 **Level ups da guilda**\n"
+
+    if level_ups:
+
+        for nome, antigo, novo, diff in sorted(level_ups, key=lambda x: x[3], reverse=True):
+
+            if diff == 1:
+                msg += f"_{nome} ➤ {antigo} → {novo} (+1)_\n"
+            else:
+                msg += f"_{nome} ➤ {antigo} → {novo} (+{diff})_\n"
+
+    else:
+        msg += "_Nenhum_\n"
+
+    # =========================
     # INATIVOS +20
     # =========================
 
@@ -310,7 +399,7 @@ _🕒 Atualizado em: {data} • {hora} (Brasil)_
             else:
                 dias_txt = f"{dias} dias"
 
-            msg += f"{nome} ➤ {dias_txt}\n"
+            msg += f"_{nome} ➤ {dias_txt}_\n"
 
     else:
         msg += "_Nenhum_\n"
@@ -392,8 +481,8 @@ print("Bot auditoria iniciado")
 
 while True:
     try:
-        in20, in10, antigos, membros_sem_tag, entraram, sairam = analisar()
-        msg = gerar_msg(in20, in10, antigos, membros_sem_tag, entraram, sairam)
+        in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups = analisar()
+        msg = gerar_msg(in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups)
 
         if mensagem_id:
             editar(msg)
