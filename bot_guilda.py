@@ -533,7 +533,7 @@ def gerar_msg(in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups,
         msg += f"_Level 600-699 ➤ {distribuicao['600-699']} membros_\n"
         msg += f"_Level 500-599 ➤ {distribuicao['500-599']} membros_\n"
 
-    return msg
+    return msg1, msg2, msg3
 
 # =========================
 # LOOP PRINCIPAL
