@@ -38,9 +38,15 @@ def carregar_estado():
     with open(ARQUIVO_ESTADO, "r") as f:
         return json.load(f)
 
+# =========================
+# ESTADO (ID das msgs no Discord)
+# =========================
 
 estado = carregar_estado()
-mensagem_id = estado.get("msg_id")
+
+msg_id1 = estado.get("msg1")
+msg_id2 = estado.get("msg2")
+msg_id3 = estado.get("msg3")
 
 def salvar_membros(lista):
     with open("membros_guilda.json", "w", encoding="utf-8") as f:
@@ -68,27 +74,37 @@ def carregar_levels():
 # DISCORD
 # =========================
 def enviar(msg):
-    global mensagem_id
+
     r = requests.post(WEBHOOK + "?wait=true", json={"content": msg})
+
     if r.status_code in (200, 201):
-        mensagem_id = r.json()["id"]
-        salvar_estado({"msg_id": mensagem_id})
+
+        msg_id = r.json()["id"]
+
         print("Mensagem criada no Discord")
+
+        return msg_id
+
     else:
         print("Erro ao enviar mensagem:", r.text)
+        return None
 
+def editar(msg_id, msg):
 
-def editar(msg):
-    if not mensagem_id:
-        enviar(msg)
-        return
-    url = WEBHOOK + "/messages/" + mensagem_id
+    if not msg_id:
+        return enviar(msg)
+
+    url = WEBHOOK + "/messages/" + msg_id
+
     r = requests.patch(url, json={"content": msg})
+
     if r.status_code in (200, 204):
         print("Mensagem atualizada")
+        return msg_id
+
     else:
         print("Erro ao editar mensagem:", r.text)
-
+        return msg_id
 
 # =========================
 # PEGAR MEMBROS DA GUILDA
@@ -547,7 +563,7 @@ def gerar_msg(in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups,
     # =========================
 
     msg3 += "\n📊 **Distribuição de levels**\n"
-    msg3 += f"_Level 800-899 ➤ {distribuicao['800-899']} membros_\n"
+    msg3 += f"_Level 800+ ➤ {distribuicao['800-899']} membros_\n"
     msg3 += f"_Level 700-799 ➤ {distribuicao['700-799']} membros_\n"
     msg3 += f"_Level 600-699 ➤ {distribuicao['600-699']} membros_\n"
     msg3 += f"_Level 500-599 ➤ {distribuicao['500-599']} membros_\n"
@@ -561,6 +577,7 @@ print("Bot auditoria iniciado")
 
 while True:
     try:
+
         in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups, level_downs, distribuicao, top_levels, forca_guilda, total_membros, media_level = analisar()
 
         msg1, msg2, msg3 = gerar_msg(
@@ -579,14 +596,25 @@ while True:
             media_level
         )
 
-        if mensagem_id:
-            editar(msg1)
-            editar(msg2)
-            editar(msg3)
+        global msg_id1, msg_id2, msg_id3
+
+        if msg_id1:
+
+            msg_id1 = editar(msg_id1, msg1)
+            msg_id2 = editar(msg_id2, msg2)
+            msg_id3 = editar(msg_id3, msg3)
+
         else:
-            enviar(msg1)
-            enviar(msg2)
-            enviar(msg3)
+
+            msg_id1 = enviar(msg1)
+            msg_id2 = enviar(msg2)
+            msg_id3 = enviar(msg3)
+
+            salvar_estado({
+                "msg1": msg_id1,
+                "msg2": msg_id2,
+                "msg3": msg_id3
+            })
 
         print("Próxima análise em 24h")
         time.sleep(INTERVALO)
