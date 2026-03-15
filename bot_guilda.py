@@ -596,8 +596,6 @@ while True:
             media_level
         )
 
-        global msg_id1, msg_id2, msg_id3
-
         if msg_id1:
 
             msg_id1 = editar(msg_id1, msg1)
