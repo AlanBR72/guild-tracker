@@ -72,7 +72,7 @@ def carregar_levels():
 
 # =========================
 # DISCORD
-# =========================
+# ========================= 
 def enviar(msg):
 
     r = requests.post(WEBHOOK + "?wait=true", json={"content": msg})
