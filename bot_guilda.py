@@ -293,20 +293,21 @@ def analisar():
     salvar_levels(levels_atuais)
 
     # =========================
-# QUASE LEVEL (600 / 700 / 800)
-# =========================
+    # QUASE LEVEL (600 / 700 / 800)
+    # =========================
 
-quase_levels = []
+    quase_levels = []
 
-for nome, level in levels_atuais.items():
+    for nome, level in levels_atuais.items():
 
-    for alvo in [600, 700, 800]:
+        for alvo in [600, 700, 800]:
 
-        faltam = alvo - level
+            faltam = alvo - level
 
-        if 0 < faltam <= 5:
-            quase_levels.append((nome, level, alvo, faltam))
-            quase_levels = sorted(quase_levels, key=lambda x: x[1], reverse=True)
+            if 0 < faltam <= 5:
+                quase_levels.append((nome, level, alvo, faltam))
+
+    quase_levels = sorted(quase_levels, key=lambda x: x[1], reverse=True)
 
     # =========================
     # INATIVOS
