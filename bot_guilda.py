@@ -293,6 +293,22 @@ def analisar():
     salvar_levels(levels_atuais)
 
     # =========================
+# QUASE LEVEL (600 / 700 / 800)
+# =========================
+
+quase_levels = []
+
+for nome, level in levels_atuais.items():
+
+    for alvo in [600, 700, 800]:
+
+        faltam = alvo - level
+
+        if 0 < faltam <= 5:
+            quase_levels.append((nome, level, alvo, faltam))
+            quase_levels = sorted(quase_levels, key=lambda x: x[1], reverse=True)
+
+    # =========================
     # INATIVOS
     # =========================
 
@@ -359,6 +375,7 @@ def analisar():
         forca_guilda,
         len(membros),
         media_level
+        quase_levels
     )
     
 # =========================
@@ -404,7 +421,7 @@ def formatar_k(valor):
     else:
         return str(valor)
     
-def gerar_msg(in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups, level_downs, distribuicao, top_levels, forca_guilda, total_membros, media_level):
+def gerar_msg(in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups, level_downs, distribuicao, top_levels, forca_guilda, total_membros, media_level, quase_levels):
 
     agora = datetime.now(BRASIL)
     data = agora.strftime("%d/%m/%Y")
@@ -446,6 +463,17 @@ def gerar_msg(in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups,
             msg1 += f"_{nome} ➤ {antigo} → {novo} (+{diff})_\n"
     else:
         msg1 += "_Nenhum_\n"
+
+    msg3 += "\n🎯 **Quase level importante**\n"
+
+    if quase_levels:
+
+        for nome, level, alvo, faltam in quase_levels:
+
+            msg3 += f"_{nome} ➤ {level} (faltam {faltam} para {alvo})_\n"
+
+    else:
+        msg3 += "_Nenhum_\n"
 
     # =========================
     # LEVEL DOWNS
@@ -578,7 +606,7 @@ print("Bot auditoria iniciado")
 while True:
     try:
 
-        in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups, level_downs, distribuicao, top_levels, forca_guilda, total_membros, media_level = analisar()
+        in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups, level_downs, distribuicao, top_levels, forca_guilda, total_membros, media_level, quase_levels = analisar()
 
         msg1, msg2, msg3 = gerar_msg(
             in20,
@@ -593,7 +621,8 @@ while True:
             top_levels,
             forca_guilda,
             total_membros,
-            media_level
+            media_level,
+            quase_levels
         )
 
         if msg_id1:
