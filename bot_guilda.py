@@ -374,7 +374,7 @@ for nome, level in levels_atuais.items():
         top_levels,
         forca_guilda,
         len(membros),
-        media_level
+        media_level,
         quase_levels
     )
     
