@@ -465,16 +465,16 @@ def gerar_msg(in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups,
     else:
         msg1 += "_Nenhum_\n"
 
-    msg3 += "\n🎯 **Quase level importante**\n"
+    msg1 += "\n🎯 **Quase level importante**\n"
 
     if quase_levels:
 
         for nome, level, alvo, faltam in quase_levels:
 
-            msg3 += f"_{nome} ➤ {level} (faltam {faltam} para {alvo})_\n"
+            msg1 += f"_{nome} ➤ {level} (faltam {faltam} para {alvo})_\n"
 
     else:
-        msg3 += "_Nenhum_\n"
+        msg1 += "_Nenhum_\n"
 
     # =========================
     # LEVEL DOWNS
