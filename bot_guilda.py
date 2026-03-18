@@ -10,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # =========================
 # CONFIG
-# =========================
+# =========================  
 GUILD_URL = "https://www.rucoyonline.com/guild/Guilt%20Of%20Virtue"
 WEBHOOK = "https://discord.com/api/webhooks/1481362798326972448/aRQkId2Le1rzymVrtXQHRgxv2c6RU7GPMrCcg7R6sQ_FXfGQv6xeaJjrOtCXYArL57Up"
 
