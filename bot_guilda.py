@@ -242,6 +242,7 @@ def gerar_msg_rank():
         nome = player["nome"]
         level = player["level"]
         magic = player["magic"]
+        xp = player.get("xp")
 
         medalha = ["🥇","🥈","🥉","4️⃣","5️⃣"][i-1]
 
@@ -270,7 +271,7 @@ def gerar_msg_rank():
                 partes.append(f"+{round(diff_xp/1_000_000)}kk XP")
 
             if partes:
-                extra = "🆙 (" + ", ".join(partes) + ")"
+                extra = " (🆙 " + ", ".join(partes) + ")"
 
         msg += f"{medalha} _**{nome}** ➤ Level **{level}** | 🪄 Magic **{magic}**{extra}_\n"
 
