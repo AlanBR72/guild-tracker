@@ -16,6 +16,7 @@ WEBHOOK = "https://discord.com/api/webhooks/1481362798326972448/aRQkId2Le1rzymVr
 WEBHOOK_RANK = "https://discord.com/api/webhooks/1494393213409300531/iX8kJAHYJdxQBZCGAOzb0vwC6HquvcfO6EZ2mFThwJ7phDDQbBqELMXcFW5t01P1rKYZ"
 
 ARQUIVO_ESTADO = "estado_msg.json"
+ARQUIVO_RANK = "rank_mage.json"
 INTERVALO = 86400  # 24h
 THREADS = 10
 
@@ -38,6 +39,18 @@ def carregar_estado():
         return {}
     with open(ARQUIVO_ESTADO, "r") as f:
         return json.load(f)
+
+def carregar_rank():
+    if not os.path.exists(ARQUIVO_RANK):
+        return {}
+
+    with open(ARQUIVO_RANK, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def salvar_rank(data):
+    with open(ARQUIVO_RANK, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
 
 # =========================
 # ESTADO (ID das msgs no Discord)
@@ -135,14 +148,25 @@ def top5_level_mage():
 
                         level = int(texto.split("Level")[1].split()[0])
 
-                        jogadores.append((nome, level))
+                        xp = None
+                        if "Experience" in texto:
+                            xp = int(texto.split("Experience")[1].split()[0].replace(",", ""))
+
+                        jogadores.append((nome, level, magic, xp))
+
+                        magic = int(cols[2].text.strip())
+
+                        jogadores.append((nome, level, magic))
 
                 except:
                     continue
 
         top5 = sorted(jogadores, key=lambda x: x[1], reverse=True)[:5]
 
-        return top5
+        return [
+            {"nome": nome, "level": level, "magic": magic, "xp": xp}
+            for nome, level, magic, xp in top5
+        ]
 
     except Exception as e:
 
@@ -152,6 +176,7 @@ def top5_level_mage():
 def gerar_msg_rank():
 
     top5 = top5_level_mage()
+    rank_antigo = carregar_rank()
 
     agora = datetime.now(BRASIL)
     data = agora.strftime("%d/%m/%Y")
@@ -164,10 +189,52 @@ def gerar_msg_rank():
         msg += "_Erro ao carregar ranking_"
         return msg
 
-    for i, (nome, level) in enumerate(top5, 1):
+    novo_rank = {}
+
+    for i, player in enumerate(top5, 1):
+
+        nome = player["nome"]
+        level = player["level"]
+        magic = player["magic"]
 
         medalha = ["🥇","🥈","🥉","4️⃣","5️⃣"][i-1]
-        msg += f"{medalha} _{nome} ➤ Level {level}_\n"
+
+        extra = ""
+
+        if nome in rank_antigo:
+
+            antigo = rank_antigo[nome]
+
+            diff_level = level - antigo.get("level", 0)
+            diff_magic = magic - antigo.get("magic", 0)
+            diff_xp = 0
+
+            if xp and antigo.get("xp"):
+                diff_xp = xp - antigo.get("xp", 0)
+
+            partes = []
+
+            if diff_level > 0:
+                partes.append(f"+{diff_level} lvl")
+
+            if diff_magic > 0:
+                partes.append(f"+{diff_magic} magic")
+
+            if diff_xp >= 30_000_000:
+                partes.append(f"+{round(diff_xp/1_000_000)}kk XP")
+
+            if partes:
+                extra = "🆙 (" + ", ".join(partes) + ")"
+
+        msg += f"{medalha} _**{nome}** ➤ Level **{level}** | 🪄 Magic **{magic}**{extra}_\n"
+
+        novo_rank[nome] = {
+            "level": level,
+            "magic": magic,
+            "xp": xp
+        }
+
+    salvar_rank(novo_rank)
 
     return msg
 
