@@ -13,6 +13,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 # =========================  
 GUILD_URL = "https://www.rucoyonline.com/guild/Guilt%20Of%20Virtue"
 WEBHOOK = "https://discord.com/api/webhooks/1481362798326972448/aRQkId2Le1rzymVrtXQHRgxv2c6RU7GPMrCcg7R6sQ_FXfGQv6xeaJjrOtCXYArL57Up"
+WEBHOOK_RANK = "https://discord.com/api/webhooks/1494393213409300531/iX8kJAHYJdxQBZCGAOzb0vwC6HquvcfO6EZ2mFThwJ7phDDQbBqELMXcFW5t01P1rKYZ"
 
 ARQUIVO_ESTADO = "estado_msg.json"
 INTERVALO = 86400  # 24h
@@ -88,6 +89,87 @@ def enviar(msg):
     else:
         print("Erro ao enviar mensagem:", r.text)
         return None
+
+def enviar_rank(msg):
+
+    r = requests.post(WEBHOOK_RANK + "?wait=true", json={"content": msg})
+
+    if r.status_code in (200, 201):
+        print("Rank enviado no Discord (bot 2)")
+    else:
+        print("Erro rank:", r.text)
+
+def top5_level_mage():
+
+    jogadores = []
+
+    try:
+
+        r = session.get(
+            "https://www.rucoyonline.com/highscores/magic/2016/1",
+            timeout=15
+        )
+
+        soup = BeautifulSoup(r.text, "html.parser")
+
+        rows = soup.find_all("tr")[1:51]
+
+        for row in rows:
+
+            cols = row.find_all("td")
+
+            if len(cols) >= 3:
+
+                nome = cols[1].text.strip().replace("Online","").strip()
+
+                try:
+
+                    url_player = f"https://www.rucoyonline.com/characters/{nome.replace(' ','%20')}"
+
+                    r2 = session.get(url_player, timeout=10)
+                    soup2 = BeautifulSoup(r2.text, "html.parser")
+
+                    texto = soup2.text
+
+                    if "Level" in texto:
+
+                        level = int(texto.split("Level")[1].split()[0])
+
+                        jogadores.append((nome, level))
+
+                except:
+                    continue
+
+        top5 = sorted(jogadores, key=lambda x: x[1], reverse=True)[:5]
+
+        return top5
+
+    except Exception as e:
+
+        print("Erro rank mage:", e)
+        return []
+
+def gerar_msg_rank():
+
+    top5 = top5_level_mage()
+
+    agora = datetime.now(BRASIL)
+    data = agora.strftime("%d/%m/%Y")
+    hora = agora.strftime("%H:%M")
+
+    msg = f"_🕒 Atualizado em: {data} • {hora}_\n\n"
+    msg += "🏆 **TOP 5 LEVEL — MAGE (TOP 50)** 🏆\n\n"
+
+    if not top5:
+        msg += "_Erro ao carregar ranking_"
+        return msg
+
+    for i, (nome, level) in enumerate(top5, 1):
+
+        medalha = ["🥇","🥈","🥉","4️⃣","5️⃣"][i-1]
+        msg += f"{medalha} _{nome} ➤ Level {level}_\n"
+
+    return msg
 
 def editar(msg_id, msg):
 
@@ -643,6 +725,15 @@ while True:
                 "msg2": msg_id2,
                 "msg3": msg_id3
             })
+
+        # =========================
+        # RANK MAGE (SEGUNDO BOT)
+        # =========================
+
+        print("🏆 Gerando rank mage...")
+
+        msg_rank = gerar_msg_rank()
+        enviar_rank(msg_rank)
 
         print("Próxima análise em 24h")
         time.sleep(INTERVALO)
