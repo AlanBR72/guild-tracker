@@ -137,14 +137,18 @@ def pegar_xp_dos_players(nomes):
 
                     xp = int(cols[3].text.strip().replace(",", ""))
 
-                    xp_dict[nome] = xp
+                    level = int(cols[2].text.strip())
+
+                    xp_dict[nome] = {
+                        "level": level,
+                        "xp": xp
+                    }
 
         return xp_dict
 
     except Exception as e:
         print("Erro ao pegar XP:", e)
         return {}
-
 
 def top5_level_mage():
 
@@ -158,8 +162,9 @@ def top5_level_mage():
         )
 
         soup = BeautifulSoup(r.text, "html.parser")
+        rows = soup.find_all("tr")[1:101]
 
-        rows = soup.find_all("tr")[1:51]
+        jogadores_magic = []
 
         for row in rows:
 
@@ -170,48 +175,37 @@ def top5_level_mage():
                 nome = cols[1].text.strip().replace("Online","").strip()
 
                 try:
-
-                    # MAGIC (vem direto do ranking)
                     magic = int(cols[2].text.strip())
-
-                    # LEVEL (vem do profile)
-                    url_player = f"https://www.rucoyonline.com/characters/{nome.replace(' ','%20')}"
-
-                    r2 = session.get(url_player, timeout=10)
-                    soup2 = BeautifulSoup(r2.text, "html.parser")
-
-                    texto = soup2.text
-
-                    if "Level" not in texto:
-                        continue
-
-                    level = int(texto.split("Level")[1].split()[0])
-
-                    jogadores.append((nome, level, magic))
-
+                    jogadores_magic.append((nome, magic))
                 except:
                     continue
 
-        # pega top 5 por level
+        # 🔥 pega xp + level de todos
+        nomes = [nome for nome, _ in jogadores_magic]
+        xp_dict = pegar_xp_dos_players(nomes)
+
+        for nome, magic in jogadores_magic:
+
+            dados = xp_dict.get(nome)
+
+            if dados:
+                jogadores.append((
+                    nome,
+                    dados["level"],
+                    magic,
+                    dados["xp"]
+                ))
+
         top5 = sorted(jogadores, key=lambda x: x[1], reverse=True)[:5]
 
-        # -----------------------
-        # PEGAR XP SÓ DESSES 5
-        # -----------------------
-        nomes_top5 = [nome for nome, _, _ in top5]
-        xp_dict = pegar_xp_dos_players(nomes_top5)
-
-        # -----------------------
-        # RETORNO FINAL
-        # -----------------------
         return [
             {
                 "nome": nome,
                 "level": level,
                 "magic": magic,
-                "xp": xp_dict.get(nome)
+                "xp": xp
             }
-            for nome, level, magic in top5
+            for nome, level, magic, xp in top5
         ]
 
     except Exception as e:
@@ -256,7 +250,7 @@ def gerar_msg_rank():
             diff_magic = magic - antigo.get("magic", 0)
             diff_xp = 0
 
-            if xp and antigo.get("xp"):
+            if xp is not None and antigo.get("xp") is not None:
                 diff_xp = xp - antigo.get("xp", 0)
 
             partes = []
@@ -268,7 +262,7 @@ def gerar_msg_rank():
                 partes.append(f"+{diff_magic} magic")
 
             if diff_xp >= 30_000_000:
-                partes.append(f"+{round(diff_xp/1_000_000)}kk XP")
+                partes.append(f"+{int(diff_xp/1_000_000)}kk XP")
 
             if partes:
                 extra = " (🆙 " + ", ".join(partes) + ")"
