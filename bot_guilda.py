@@ -345,6 +345,8 @@ def top7_level():
 
 def gerar_msg_rank_level():
 
+    msg = ""
+
     top7 = top7_level()
     rank_antigo = carregar_rank_level()  # vamos criar isso
     nomes = [p["nome"] for p in top7]
@@ -374,6 +376,7 @@ def gerar_msg_rank_level():
 
             diff_level = level - antigo.get("level", 0)
             diff_xp = xp - antigo.get("xp", 0)
+            skill = skills.get(nome, {"melee":0,"distance":0,"magic":0})
             skill_antigo = rank_antigo.get(nome, {})
             diff_melee = skill["melee"] - skill_antigo.get("melee", 0)
             diff_dist = skill["distance"] - skill_antigo.get("distance", 0)
@@ -399,7 +402,6 @@ def gerar_msg_rank_level():
             if partes:
                 extra = " (🆙 " + ", ".join(partes) + ")"
 
-        skill = skills.get(nome, {"melee":0,"distance":0,"magic":0})
         emoji, valor_skill = detectar_classe(skill)
 
         msg += f"{medalha} _**{nome}** ➤ Level **{level}** | {emoji} **{valor_skill}**{extra}_\n"
@@ -571,6 +573,8 @@ def analisar_hunted():
     return total, media, l600, l700, l800, entraram, sairam, ups, downs
 
 def gerar_msg_hunted():
+
+    msg = ""
 
     total, media, l600, l700, l800, entraram, sairam, ups, downs = analisar_hunted()
 
