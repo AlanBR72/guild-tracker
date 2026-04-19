@@ -590,10 +590,10 @@ def gerar_msg_hunted():
     msg += f"👥 **Membros:** {total}\n"
     msg += f"⚔️ **Média de level:** {media}\n\n"
 
-    msg += "📊 **Distribuição de força**\n"
-    msg += f"_Level 600+ ➤ {l600}_\n"
-    msg += f"_Level 700+ ➤ {l700}_\n"
-    msg += f"_Level 800+ ➤ {l800}_\n\n"
+    msg += "📊 **Distribuição de levels**\n"
+    msg += f"_Level 600+ ➤ {l600} membros_\n"
+    msg += f"_Level 700+ ➤ {l700} membros_\n"
+    msg += f"_Level 800+ ➤ {l800} membros_\n\n"
 
     msg += "📥 **Entraram**\n"
     msg += "\n".join(f"_{n}_" for n in entraram) if entraram else "_Nenhum_"
@@ -1217,8 +1217,10 @@ while True:
 
         enviar_em_partes(msg_final)
 
-        print("Próxima análise em 24h")
-        time.sleep(INTERVALO)
+        segundos = segundos_ate_proximo_horario(3)
+
+        print(f"⏳ Próxima execução em {int(segundos/3600)}h")
+        time.sleep(segundos)
 
     except Exception as e:
         print("Erro:", e)
