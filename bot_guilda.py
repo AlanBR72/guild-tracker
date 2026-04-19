@@ -4,7 +4,7 @@ import re
 import time
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytz
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -12,11 +12,15 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 # CONFIG
 # =========================  
 GUILD_URL = "https://www.rucoyonline.com/guild/Guilt%20Of%20Virtue"
+HUNTED_URL = "https://www.rucoyonline.com/guild/Peace%20Killers"
+ARQUIVO_HUNTED = "hunted_data.json"
 WEBHOOK = "https://discord.com/api/webhooks/1481362798326972448/aRQkId2Le1rzymVrtXQHRgxv2c6RU7GPMrCcg7R6sQ_FXfGQv6xeaJjrOtCXYArL57Up"
 WEBHOOK_RANK = "https://discord.com/api/webhooks/1494393213409300531/iX8kJAHYJdxQBZCGAOzb0vwC6HquvcfO6EZ2mFThwJ7phDDQbBqELMXcFW5t01P1rKYZ"
 
 ARQUIVO_ESTADO = "estado_msg.json"
 ARQUIVO_RANK = "rank_mage.json"
+ARQUIVO_RANK_LEVEL = "rank_level.json"
+
 INTERVALO = 86400  # 24h
 THREADS = 10
 
@@ -47,9 +51,31 @@ def carregar_rank():
     with open(ARQUIVO_RANK, "r", encoding="utf-8") as f:
         return json.load(f)
 
-
 def salvar_rank(data):
     with open(ARQUIVO_RANK, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+def carregar_rank_level():
+    if not os.path.exists(ARQUIVO_RANK_LEVEL):
+        return {}
+
+    with open(ARQUIVO_RANK_LEVEL, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+def salvar_rank_level(data):
+    with open(ARQUIVO_RANK_LEVEL, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+def carregar_hunted():
+    if not os.path.exists(ARQUIVO_HUNTED):
+        return {"membros": [], "levels": {}}
+
+    with open(ARQUIVO_HUNTED, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def salvar_hunted(data):
+    with open(ARQUIVO_HUNTED, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 # =========================
@@ -278,6 +304,311 @@ def gerar_msg_rank():
     salvar_rank(novo_rank)
 
     return msg
+
+def top7_level():
+
+    try:
+
+        r = session.get(
+            "https://www.rucoyonline.com/highscores/experience/2016/1",
+            timeout=15
+        )
+
+        soup = BeautifulSoup(r.text, "html.parser")
+
+        jogadores = []
+
+        for row in soup.find_all("tr")[1:51]:
+
+            cols = row.find_all("td")
+
+            if len(cols) >= 4:
+
+                nome = cols[1].text.strip().replace("Online","").strip()
+                level = int(cols[2].text.strip())
+                xp = int(cols[3].text.strip().replace(",", ""))
+
+                jogadores.append({
+                    "nome": nome,
+                    "level": level,
+                    "xp": xp
+                })
+
+        # já vem ordenado, mas garantimos
+        top7 = sorted(jogadores, key=lambda x: (x["level"], x["xp"]), reverse=True)[:7]
+
+        return top7
+
+    except Exception as e:
+        print("Erro rank level:", e)
+        return []
+
+def gerar_msg_rank_level():
+
+    top7 = top7_level()
+    rank_antigo = carregar_rank_level()  # vamos criar isso
+    nomes = [p["nome"] for p in top7]
+    skills = pegar_skills_players(nomes)
+
+    msg += "🏆 **TOP 7 LEVEL GLOBAL** 🏆\n\n"
+
+    if not top7:
+        msg += "_Erro ao carregar ranking_"
+        return msg
+
+    novo_rank = {}
+
+    for i, player in enumerate(top7, 1):
+
+        nome = player["nome"]
+        level = player["level"]
+        xp = player["xp"]
+
+        medalha = ["🥇","🥈","🥉","4️⃣","5️⃣","6️⃣","7️⃣"][i-1]
+
+        extra = ""
+
+        if nome in rank_antigo:
+
+            antigo = rank_antigo[nome]
+
+            diff_level = level - antigo.get("level", 0)
+            diff_xp = xp - antigo.get("xp", 0)
+            skill_antigo = rank_antigo.get(nome, {})
+            diff_melee = skill["melee"] - skill_antigo.get("melee", 0)
+            diff_dist = skill["distance"] - skill_antigo.get("distance", 0)
+            diff_magic = skill["magic"] - skill_antigo.get("magic", 0)
+
+            partes = []
+
+            if diff_level > 0:
+                partes.append(f"+{diff_level} lvl")
+
+            if diff_xp >= 30_000_000:
+                partes.append(f"+{int(diff_xp/1_000_000)}kk XP")
+
+            if diff_melee > 0:
+                partes.append(f"+{diff_melee} melee")
+
+            if diff_dist > 0:
+                partes.append(f"+{diff_dist} dist")
+
+            if diff_magic > 0:
+                partes.append(f"+{diff_magic} magic")
+
+            if partes:
+                extra = " (🆙 " + ", ".join(partes) + ")"
+
+        skill = skills.get(nome, {"melee":0,"distance":0,"magic":0})
+        emoji, valor_skill = detectar_classe(skill)
+
+        msg += f"{medalha} _**{nome}** ➤ Level **{level}** | {emoji} **{valor_skill}**{extra}_\n"
+
+        novo_rank[nome] = {
+            "level": level,
+            "xp": xp,
+            "melee": skill["melee"],
+            "distance": skill["distance"],
+            "magic": skill["magic"]
+        }
+
+    salvar_rank_level(novo_rank)
+
+    return msg
+
+def pegar_skills_players(nomes):
+
+    skills = {nome: {"melee": 0, "distance": 0, "magic": 0} for nome in nomes}
+
+    try:
+        # -----------------------
+        # MELEE
+        # -----------------------
+        r = session.get("https://www.rucoyonline.com/highscores/melee/2016/1", timeout=15)
+        soup = BeautifulSoup(r.text, "html.parser")
+
+        for row in soup.find_all("tr"):
+            cols = row.find_all("td")
+            if len(cols) >= 3:
+                nome = cols[1].text.strip().replace("Online","").strip()
+                if nome in skills:
+                    skills[nome]["melee"] = int(cols[2].text.strip())
+
+        # -----------------------
+        # DISTANCE
+        # -----------------------
+        r = session.get("https://www.rucoyonline.com/highscores/distance/2016/1", timeout=15)
+        soup = BeautifulSoup(r.text, "html.parser")
+
+        for row in soup.find_all("tr"):
+            cols = row.find_all("td")
+            if len(cols) >= 3:
+                nome = cols[1].text.strip().replace("Online","").strip()
+                if nome in skills:
+                    skills[nome]["distance"] = int(cols[2].text.strip())
+
+        # -----------------------
+        # MAGIC
+        # -----------------------
+        r = session.get("https://www.rucoyonline.com/highscores/magic/2016/1", timeout=15)
+        soup = BeautifulSoup(r.text, "html.parser")
+
+        for row in soup.find_all("tr"):
+            cols = row.find_all("td")
+            if len(cols) >= 3:
+                nome = cols[1].text.strip().replace("Online","").strip()
+                if nome in skills:
+                    skills[nome]["magic"] = int(cols[2].text.strip())
+
+        return skills
+
+    except Exception as e:
+        print("Erro ao pegar skills:", e)
+        return {}
+
+def detectar_classe(skill):
+
+    melee = skill["melee"]
+    dist = skill["distance"]
+    magic = skill["magic"]
+
+    if melee >= dist and melee >= magic:
+        return "⚔️ Melee", melee
+
+    elif dist >= melee and dist >= magic:
+        return "🏹 Dist", dist
+
+    else:
+        return "🪄 Magic", magic
+
+def pegar_membros_hunted():
+
+    r = session.get(HUNTED_URL, timeout=15)
+    soup = BeautifulSoup(r.text, "html.parser")
+
+    membros = []
+    levels = {}
+
+    tabela = soup.select_one("table")
+
+    if not tabela:
+        return membros, levels
+
+    for row in tabela.find_all("tr")[1:]:
+
+        cols = row.find_all("td")
+
+        if len(cols) < 3:
+            continue
+
+        link = row.select_one("a[href*='/characters/']")
+        if not link:
+            continue
+
+        nome = link.get_text(strip=True)
+
+        try:
+            level = int(cols[1].get_text(strip=True))
+        except:
+            continue
+
+        membros.append(nome)
+        levels[nome] = level
+
+    return membros, levels
+
+def analisar_hunted():
+
+    membros, levels_atuais = pegar_membros_hunted()
+    dados_antigos = carregar_hunted()
+
+    membros_antigos = dados_antigos.get("membros", [])
+    levels_antigos = dados_antigos.get("levels", {})
+
+    # =========================
+    # ENTRADAS / SAÍDAS
+    # =========================
+    entraram = list(set(membros) - set(membros_antigos))
+    sairam = list(set(membros_antigos) - set(membros))
+
+    # =========================
+    # UPS / DOWNS
+    # =========================
+    ups = []
+    downs = []
+
+    for nome, level in levels_atuais.items():
+
+        if nome in levels_antigos:
+
+            antigo = levels_antigos[nome]
+            diff = level - antigo
+
+            if diff > 0:
+                ups.append((nome, diff))
+            elif diff < 0:
+                downs.append((nome, abs(diff)))
+
+    # =========================
+    # ESTATÍSTICAS
+    # =========================
+    total = len(levels_atuais)
+
+    media = round(sum(levels_atuais.values()) / total) if total > 0 else 0
+
+    l600 = sum(1 for l in levels_atuais.values() if l >= 600)
+    l700 = sum(1 for l in levels_atuais.values() if l >= 700)
+    l800 = sum(1 for l in levels_atuais.values() if l >= 800)
+
+    # =========================
+    # SALVAR NOVO ESTADO
+    # =========================
+    salvar_hunted({
+        "membros": membros,
+        "levels": levels_atuais
+    })
+
+    return total, media, l600, l700, l800, entraram, sairam, ups, downs
+
+def gerar_msg_hunted():
+
+    total, media, l600, l700, l800, entraram, sairam, ups, downs = analisar_hunted()
+
+    msg += "🔥 **RELATÓRIO — PEACE KILLERS (HUNTED)** 🔥\n\n"
+
+    msg += f"👥 **Membros:** {total}\n"
+    msg += f"⚔️ **Média de level:** {media}\n\n"
+
+    msg += "📊 **Distribuição de força**\n"
+    msg += f"_Level 600+ ➤ {l600}_\n"
+    msg += f"_Level 700+ ➤ {l700}_\n"
+    msg += f"_Level 800+ ➤ {l800}_\n\n"
+
+    msg += "📥 **Entraram**\n"
+    msg += "\n".join(f"_{n}_" for n in entraram) if entraram else "_Nenhum_"
+
+    msg += "\n\n📤 **Saíram**\n"
+    msg += "\n".join(f"_{n}_" for n in sairam) if sairam else "_Nenhum_"
+
+    msg += "\n\n📈 **Ups de level**\n"
+    msg += "\n".join(f"_{n} (+{d})_" for n, d in ups) if ups else "_Nenhum_"
+
+    msg += "\n\n📉 **Downs de level**\n"
+    msg += "\n".join(f"_{n} (-{d})_" for n, d in downs) if downs else "_Nenhum_"
+
+    return msg
+
+def segundos_ate_proximo_horario(hora_alvo=3):
+
+    agora = datetime.now(BRASIL)
+
+    alvo = agora.replace(hour=hora_alvo, minute=0, second=0, microsecond=0)
+
+    # se já passou das 03h hoje → agenda pra amanhã
+    if agora >= alvo:
+        alvo += timedelta(days=1)
+
+    return (alvo - agora).total_seconds()
 
 def editar(msg_id, msg):
 
@@ -792,38 +1123,34 @@ def gerar_msg(in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups,
 # =========================
 # LOOP PRINCIPAL
 # =========================
-print("Bot auditoria iniciado")
+print("Bot iniciado - aguardando horário (03:00)...")
 
 while True:
     try:
 
+        segundos = segundos_ate_proximo_horario(3)
+
+        print(f"Aguardando {int(segundos)} segundos até 03:00...")
+        time.sleep(segundos)
+
+        print("🚀 Executando rotina das 03:00...")
+
+        # =========================
+        # BOT 1 (guild)
+        # =========================
         in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups, level_downs, distribuicao, top_levels, forca_guilda, total_membros, media_level, quase_levels = analisar()
 
         msg1, msg2, msg3 = gerar_msg(
-            in20,
-            in10,
-            antigos,
-            membros_sem_tag,
-            entraram,
-            sairam,
-            level_ups,
-            level_downs,
-            distribuicao,
-            top_levels,
-            forca_guilda,
-            total_membros,
-            media_level,
-            quase_levels
+            in20, in10, antigos, membros_sem_tag, entraram, sairam,
+            level_ups, level_downs, distribuicao, top_levels,
+            forca_guilda, total_membros, media_level, quase_levels
         )
 
         if msg_id1:
-
             msg_id1 = editar(msg_id1, msg1)
             msg_id2 = editar(msg_id2, msg2)
             msg_id3 = editar(msg_id3, msg3)
-
         else:
-
             msg_id1 = enviar(msg1)
             msg_id2 = enviar(msg2)
             msg_id3 = enviar(msg3)
@@ -835,16 +1162,25 @@ while True:
             })
 
         # =========================
-        # RANK MAGE (SEGUNDO BOT)
+        # BOT 2 (painel completo)
         # =========================
-
-        print("🏆 Gerando rank mage...")
+        print("🏆 Gerando painel completo...")
 
         msg_rank = gerar_msg_rank()
-        enviar_rank(msg_rank)
+        msg_rank_level = gerar_msg_rank_level()
+        msg_hunted = gerar_msg_hunted()
 
-        print("Próxima análise em 24h")
-        time.sleep(INTERVALO)
+        msg_final = (
+            msg_rank
+            + "\n\n━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            + msg_rank_level
+            + "\n\n━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            + msg_hunted
+        )
+
+        enviar_rank(msg_final)
+
+        print("✅ Atualização concluída. Aguardando próximo dia...")
 
     except Exception as e:
         print("Erro:", e)
