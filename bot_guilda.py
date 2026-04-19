@@ -528,18 +528,23 @@ def analisar_hunted():
     membros_antigos = dados_antigos.get("membros", [])
     levels_antigos = dados_antigos.get("levels", {})
 
-    # =========================
-    # ENTRADAS / SAÍDAS
-    # =========================
-    # =========================
-    # PRIMEIRO RUN (SEM HISTÓRICO)
-    # =========================
-    if not membros_antigos:
-        entraram = []
-        sairam = []
-    else:
-        entraram = list(set(membros) - set(membros_antigos))
-        sairam = list(set(membros_antigos) - set(membros))
+# =========================
+# ENTRADAS / SAÍDAS (COM LEVEL)
+# =========================
+entraram = []
+sairam = []
+
+if membros_antigos:
+
+    for nome in membros:
+        if nome not in membros_antigos:
+            entraram.append((nome, levels_atuais.get(nome, 0)))
+
+    for nome in membros_antigos:
+        if nome not in membros:
+            level_antigo = levels_antigos.get(nome, 0)
+            sairam.append((nome, level_antigo))
+            
     # =========================
     # UPS / DOWNS
     # =========================
@@ -554,9 +559,9 @@ def analisar_hunted():
             diff = level - antigo
 
             if diff > 0:
-                ups.append((nome, diff))
+                ups.append((nome, antigo, level))
             elif diff < 0:
-                downs.append((nome, abs(diff)))
+                downs.append((nome, antigo, level))
 
     # =========================
     # ESTATÍSTICAS
@@ -591,21 +596,21 @@ def gerar_msg_hunted():
     msg += f"⚔️ **Média de level:** {media}\n\n"
 
     msg += "📊 **Distribuição de levels**\n"
-    msg += f"_Level 600+ ➤ {l600} membros_\n"
+    msg += f"_Level 800+ ➤ {l800} membros_\n"
     msg += f"_Level 700+ ➤ {l700} membros_\n"
-    msg += f"_Level 800+ ➤ {l800} membros_\n\n"
+    msg += f"_Level 600+ ➤ {l600} membros_\n\n"
 
     msg += "📥 **Entraram**\n"
-    msg += "\n".join(f"_{n}_" for n in entraram) if entraram else "_Nenhum_"
+    msg += "\n".join(f"_{n} ➤ lvl {lvl}_" for n, lvl in entraram) if entraram else "_Nenhum_"
 
     msg += "\n\n📤 **Saíram**\n"
-    msg += "\n".join(f"_{n}_" for n in sairam) if sairam else "_Nenhum_"
+    msg += "\n".join(f"_{n} ➤ lvl {lvl}_" for n, lvl in sairam) if sairam else "_Nenhum_"
 
     msg += "\n\n📈 **Ups de level**\n"
-    msg += "\n".join(f"_{n} (+{d})_" for n, d in ups) if ups else "_Nenhum_"
+    msg += "\n".join(f"_{n} ➤ {antigo} → {novo} (+{novo-antigo})_" for n, antigo, novo in ups) if ups else "_Nenhum_"
 
     msg += "\n\n📉 **Downs de level**\n"
-    msg += "\n".join(f"_{n} (-{d})_" for n, d in downs) if downs else "_Nenhum_"
+    msg += "\n".join(f"_{n} ➤ {antigo} → {novo} (-{antigo-novo})_" for n, antigo, novo in downs) if downs else "_Nenhum_"
 
     return msg
 
