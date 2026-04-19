@@ -531,9 +531,15 @@ def analisar_hunted():
     # =========================
     # ENTRADAS / SAÍDAS
     # =========================
-    entraram = list(set(membros) - set(membros_antigos))
-    sairam = list(set(membros_antigos) - set(membros))
-
+    # =========================
+    # PRIMEIRO RUN (SEM HISTÓRICO)
+    # =========================
+    if not membros_antigos:
+        entraram = []
+        sairam = []
+    else:
+        entraram = list(set(membros) - set(membros_antigos))
+        sairam = list(set(membros_antigos) - set(membros))
     # =========================
     # UPS / DOWNS
     # =========================
@@ -1168,37 +1174,52 @@ while True:
                 "msg3": msg_id3
             })
 
-        # =========================
-        # RANK/TRACK (SEGUNDO BOT)
-        # =========================
+# =========================
+# RANK/TRACK (SEGUNDO BOT)
+# =========================
 
-        print("🏆 Gerando painel completo...")
+print("🏆 Gerando painel completo...")
 
-        msg_rank = gerar_msg_rank()
-        msg_rank_level = gerar_msg_rank_level()
-        msg_hunted = gerar_msg_hunted()
+msg_rank = gerar_msg_rank()
+msg_rank_level = gerar_msg_rank_level()
+msg_hunted = gerar_msg_hunted()
 
-        # 🔥 JUNTA APENAS RANK + LEVEL
-        msg_rank_final = (
-            msg_rank
-            + "\n\n━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            + msg_rank_level
-        )
+# 🔥 TUDO JUNTO
+msg_final = (
+    msg_rank
+    + "\n\n━━━━━━━━━━━━━━━━━━━━━━\n\n"
+    + msg_rank_level
+    + "\n\n━━━━━━━━━━━━━━━━━━━━━━\n\n"
+    + msg_hunted
+)
 
-        # 🔒 PROTEÇÃO CONTRA LIMITE DO DISCORD
-        if len(msg_rank_final) > 1900:
-            print("⚠️ Mensagem grande, enviando separado...")
-            enviar_rank(msg_rank)
-            enviar_rank(msg_rank_level)
+# =========================
+# AUTO DIVISÃO (ANTI 2000)
+# =========================
+def enviar_em_partes(msg, limite=1900):
+
+    partes = []
+    
+    while len(msg) > limite:
+        corte = msg[:limite]
+
+        # tenta cortar em linha (mais bonito)
+        ultimo_break = corte.rfind("\n")
+
+        if ultimo_break != -1:
+            partes.append(msg[:ultimo_break])
+            msg = msg[ultimo_break:]
         else:
-            enviar_rank(msg_rank_final)
+            partes.append(corte)
+            msg = msg[limite:]
 
-        # 🔥 HUNTED SEMPRE SEPARADO
-        enviar_rank(msg_hunted)
+    partes.append(msg)
 
-        print("Próxima análise em 24h")
-        time.sleep(INTERVALO)
+    for parte in partes:
+        enviar_rank(parte)
 
-    except Exception as e:
-        print("Erro:", e)
-        time.sleep(60)
+# 🔥 ENVIO FINAL
+enviar_em_partes(msg_final)
+
+print("Próxima análise em 24h")
+time.sleep(INTERVALO)
