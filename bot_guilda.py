@@ -1174,52 +1174,52 @@ while True:
                 "msg3": msg_id3
             })
 
-# =========================
-# RANK/TRACK (SEGUNDO BOT)
-# =========================
+        # =========================
+        # RANK/TRACK (SEGUNDO BOT)
+        # =========================
 
-print("🏆 Gerando painel completo...")
+        print("🏆 Gerando painel completo...")
 
-msg_rank = gerar_msg_rank()
-msg_rank_level = gerar_msg_rank_level()
-msg_hunted = gerar_msg_hunted()
+        msg_rank = gerar_msg_rank()
+        msg_rank_level = gerar_msg_rank_level()
+        msg_hunted = gerar_msg_hunted()
 
-# 🔥 TUDO JUNTO
-msg_final = (
-    msg_rank
-    + "\n\n━━━━━━━━━━━━━━━━━━━━━━\n\n"
-    + msg_rank_level
-    + "\n\n━━━━━━━━━━━━━━━━━━━━━━\n\n"
-    + msg_hunted
-)
+        msg_final = (
+            msg_rank
+            + "\n\n━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            + msg_rank_level
+            + "\n\n━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            + msg_hunted
+        )
 
-# =========================
-# AUTO DIVISÃO (ANTI 2000)
-# =========================
-def enviar_em_partes(msg, limite=1900):
+        # =========================
+        # AUTO DIVISÃO (ANTI 2000)
+        # =========================
+        def enviar_em_partes(msg, limite=1900):
 
-    partes = []
-    
-    while len(msg) > limite:
-        corte = msg[:limite]
+            partes = []
 
-        # tenta cortar em linha (mais bonito)
-        ultimo_break = corte.rfind("\n")
+            while len(msg) > limite:
+                corte = msg[:limite]
+                ultimo_break = corte.rfind("\n")
 
-        if ultimo_break != -1:
-            partes.append(msg[:ultimo_break])
-            msg = msg[ultimo_break:]
-        else:
-            partes.append(corte)
-            msg = msg[limite:]
+                if ultimo_break != -1:
+                    partes.append(msg[:ultimo_break])
+                    msg = msg[ultimo_break:]
+                else:
+                    partes.append(corte)
+                    msg = msg[limite:]
 
-    partes.append(msg)
+            partes.append(msg)
 
-    for parte in partes:
-        enviar_rank(parte)
+            for parte in partes:
+                enviar_rank(parte)
 
-# 🔥 ENVIO FINAL
-enviar_em_partes(msg_final)
+        enviar_em_partes(msg_final)
 
-print("Próxima análise em 24h")
-time.sleep(INTERVALO)
+        print("Próxima análise em 24h")
+        time.sleep(INTERVALO)
+
+    except Exception as e:
+        print("Erro:", e)
+        time.sleep(60)
