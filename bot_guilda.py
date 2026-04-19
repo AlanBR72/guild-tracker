@@ -528,23 +528,23 @@ def analisar_hunted():
     membros_antigos = dados_antigos.get("membros", [])
     levels_antigos = dados_antigos.get("levels", {})
 
-# =========================
-# ENTRADAS / SAÍDAS (COM LEVEL)
-# =========================
-entraram = []
-sairam = []
+    # =========================
+    # ENTRADAS / SAÍDAS (COM LEVEL)
+    # =========================
+    entraram = []
+    sairam = []
 
-if membros_antigos:
+    if membros_antigos:
 
-    for nome in membros:
-        if nome not in membros_antigos:
-            entraram.append((nome, levels_atuais.get(nome, 0)))
+        for nome in membros:
+            if nome not in membros_antigos:
+                entraram.append((nome, levels_atuais.get(nome, 0)))
 
-    for nome in membros_antigos:
-        if nome not in membros:
-            level_antigo = levels_antigos.get(nome, 0)
-            sairam.append((nome, level_antigo))
-            
+        for nome in membros_antigos:
+            if nome not in membros:
+                level_antigo = levels_antigos.get(nome, 0)
+                sairam.append((nome, level_antigo))
+
     # =========================
     # UPS / DOWNS
     # =========================
