@@ -1153,13 +1153,11 @@ while True:
         )
 
         if msg_id1:
-
             msg_id1 = editar(msg_id1, msg1)
             msg_id2 = editar(msg_id2, msg2)
             msg_id3 = editar(msg_id3, msg3)
 
         else:
-
             msg_id1 = enviar(msg1)
             msg_id2 = enviar(msg2)
             msg_id3 = enviar(msg3)
@@ -1180,15 +1178,23 @@ while True:
         msg_rank_level = gerar_msg_rank_level()
         msg_hunted = gerar_msg_hunted()
 
-        msg_final = (
+        # 🔥 JUNTA APENAS RANK + LEVEL
+        msg_rank_final = (
             msg_rank
             + "\n\n━━━━━━━━━━━━━━━━━━━━━━\n\n"
             + msg_rank_level
-            + "\n\n━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            + msg_hunted
         )
 
-        enviar_rank(msg_final)
+        # 🔒 PROTEÇÃO CONTRA LIMITE DO DISCORD
+        if len(msg_rank_final) > 1900:
+            print("⚠️ Mensagem grande, enviando separado...")
+            enviar_rank(msg_rank)
+            enviar_rank(msg_rank_level)
+        else:
+            enviar_rank(msg_rank_final)
+
+        # 🔥 HUNTED SEMPRE SEPARADO
+        enviar_rank(msg_hunted)
 
         print("Próxima análise em 24h")
         time.sleep(INTERVALO)
