@@ -1123,34 +1123,38 @@ def gerar_msg(in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups,
 # =========================
 # LOOP PRINCIPAL
 # =========================
-print("Bot iniciado - aguardando horário (03:00)...")
+print("Bot auditoria iniciado")
 
 while True:
     try:
 
-        segundos = segundos_ate_proximo_horario(3)
-
-        print(f"Aguardando {int(segundos)} segundos até 03:00...")
-        time.sleep(segundos)
-
-        print("🚀 Executando rotina das 03:00...")
-
-        # =========================
-        # BOT 1 (guild)
-        # =========================
         in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups, level_downs, distribuicao, top_levels, forca_guilda, total_membros, media_level, quase_levels = analisar()
 
         msg1, msg2, msg3 = gerar_msg(
-            in20, in10, antigos, membros_sem_tag, entraram, sairam,
-            level_ups, level_downs, distribuicao, top_levels,
-            forca_guilda, total_membros, media_level, quase_levels
+            in20,
+            in10,
+            antigos,
+            membros_sem_tag,
+            entraram,
+            sairam,
+            level_ups,
+            level_downs,
+            distribuicao,
+            top_levels,
+            forca_guilda,
+            total_membros,
+            media_level,
+            quase_levels
         )
 
         if msg_id1:
+
             msg_id1 = editar(msg_id1, msg1)
             msg_id2 = editar(msg_id2, msg2)
             msg_id3 = editar(msg_id3, msg3)
+
         else:
+
             msg_id1 = enviar(msg1)
             msg_id2 = enviar(msg2)
             msg_id3 = enviar(msg3)
@@ -1162,8 +1166,9 @@ while True:
             })
 
         # =========================
-        # BOT 2 (painel completo)
+        # RANK/TRACK (SEGUNDO BOT)
         # =========================
+
         print("🏆 Gerando painel completo...")
 
         msg_rank = gerar_msg_rank()
@@ -1180,7 +1185,8 @@ while True:
 
         enviar_rank(msg_final)
 
-        print("✅ Atualização concluída. Aguardando próximo dia...")
+        print("Próxima análise em 24h")
+        time.sleep(INTERVALO)
 
     except Exception as e:
         print("Erro:", e)
