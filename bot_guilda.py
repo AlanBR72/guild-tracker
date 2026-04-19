@@ -366,6 +366,8 @@ def gerar_msg_rank_level():
         level = player["level"]
         xp = player["xp"]
 
+        skill = skills.get(nome, {"melee":0,"distance":0,"magic":0})
+
         medalha = ["🥇","🥈","🥉","4️⃣","5️⃣","6️⃣","7️⃣"][i-1]
 
         extra = ""
@@ -376,7 +378,6 @@ def gerar_msg_rank_level():
 
             diff_level = level - antigo.get("level", 0)
             diff_xp = xp - antigo.get("xp", 0)
-            skill = skills.get(nome, {"melee":0,"distance":0,"magic":0})
             skill_antigo = rank_antigo.get(nome, {})
             diff_melee = skill["melee"] - skill_antigo.get("melee", 0)
             diff_dist = skill["distance"] - skill_antigo.get("distance", 0)
