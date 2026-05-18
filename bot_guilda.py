@@ -649,6 +649,7 @@ def editar(msg_id, msg):
 def pegar_membros():
 
     r = session.get(GUILD_URL, timeout=15)
+
     soup = BeautifulSoup(r.text, "html.parser")
 
     membros = []
@@ -664,6 +665,7 @@ def pegar_membros():
     linhas = tabela.select("tr")
 
     for row in linhas[1:]:
+
         cols = row.find_all("td")
 
         if len(cols) < 3:
@@ -679,25 +681,42 @@ def pegar_membros():
         # =========================
         # LEVEL
         # =========================
+
         level_text = cols[1].get_text(strip=True)
 
         try:
             level = int(level_text)
+
         except:
             continue
 
         # =========================
         # DATA DE ENTRADA
         # =========================
+
         join_text = cols[2].get_text(strip=True)
 
         try:
-            join_date = datetime.strptime(join_text, "%b %d, %Y")
+
+            join_date = datetime.strptime(
+                join_text,
+                "%b %d, %Y"
+            )
+
             join_date = BRASIL.localize(join_date)
+
         except:
             continue
 
-        membros.append(nome)
+        # =========================
+        # SALVAR
+        # =========================
+
+        membros.append({
+            "nome": nome,
+            "level": level
+        })
+
         guild_datas[nome] = join_date
         levels[nome] = level
 
