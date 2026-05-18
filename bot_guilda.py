@@ -818,61 +818,58 @@ def analisar():
     # =========================
 
     membros_atuais = {
-        m["nome"]: m["level"]
-        for m in membros
+        nome: levels_atuais[nome]
+        for nome in levels_atuais
     }
 
     membros_antigos = carregar_membros()
 
-    # 🔥 converte formato antigo
-    if isinstance(membros_antigos, list):
-
-        membros_antigos = {
-            nome: 0
-            for nome in membros_antigos
-        }
-
     entraram = []
     sairam = []
 
-    # 🔥 compatibilidade com formato antigo
-    if isinstance(membros_antigos, list):
+    # 🔥 primeira execução
+    if not membros_antigos:
 
-        membros_antigos = {
-            nome: "?"
-            for nome in membros_antigos
-        }
+        print("🧠 Primeira execução detectada")
+        salvar_membros(membros_atuais)
 
-    if membros_antigos is None:
-        membros_antigos = {}
+    else:
 
-    # =========================
-    # ENTRARAM
-    # =========================
+        # 🔥 compatibilidade formato antigo
+        if isinstance(membros_antigos, list):
 
-    for nome, level in membros_atuais.items():
+            membros_antigos = {
+                nome: "?"
+                for nome in membros_antigos
+            }
 
-        if nome not in membros_antigos:
+        # =========================
+        # ENTRARAM
+        # =========================
 
-            entraram.append({
-                "nome": nome,
-                "level": level
-            })
+        for nome, level in membros_atuais.items():
 
-    # =========================
-    # SAÍRAM
-    # =========================
+            if nome not in membros_antigos:
 
-    for nome, level in membros_antigos.items():
+                entraram.append({
+                    "nome": nome,
+                    "level": level
+                })
 
-        if nome not in membros_atuais:
+        # =========================
+        # SAÍRAM
+        # =========================
 
-            sairam.append({
-                "nome": nome,
-                "level": level
-            })
+        for nome, level in membros_antigos.items():
 
-    salvar_membros(membros_atuais)
+            if nome not in membros_atuais:
+
+                sairam.append({
+                    "nome": nome,
+                    "level": level
+                })
+
+        salvar_membros(membros_atuais)
 
     # =========================
     # DETECTAR LEVEL UPS / DOWNS
@@ -950,8 +947,8 @@ def analisar():
     with ThreadPoolExecutor(max_workers=THREADS) as executor:
 
         futures = {
-            executor.submit(last_online_requests, m["nome"]): m["nome"]
-            for m in membros
+            executor.submit(last_online_requests, nome): nome
+            for nome in membros
         }
 
         for future in as_completed(futures):
