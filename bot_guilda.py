@@ -249,7 +249,7 @@ def gerar_msg_rank():
     hora = agora.strftime("%H:%M")
 
     msg = f"_🕒 Atualizado em: {data} • {hora}_\n\n"
-    msg += "🏆 **TOP 5 LEVEL — MAGE (TOP 50)** 🏆\n\n"
+    msg += "🧙‍♂️ **TOP 5 LEVEL — MAGE (TOP 50)** 🧙‍♂️\n\n"
 
     if not top5:
         msg += "_Erro ao carregar ranking_"
@@ -590,7 +590,7 @@ def gerar_msg_hunted():
 
     total, media, l600, l700, l800, entraram, sairam, ups, downs = analisar_hunted()
 
-    msg += "🔥 **RELATÓRIO — PEACE KILLERS (HUNTED)** 🔥\n\n"
+    msg += "🎯 **RELATÓRIO — PEACE KILLERS (HUNTED)** 🎯\n\n"
 
     msg += f"👥 **Membros:** {total}\n"
     msg += f"⚔️ **Média de level:** {media}\n\n"
