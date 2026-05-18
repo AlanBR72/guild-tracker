@@ -824,6 +824,14 @@ def analisar():
 
     membros_antigos = carregar_membros()
 
+    # 🔥 converte formato antigo
+    if isinstance(membros_antigos, list):
+
+        membros_antigos = {
+            nome: 0
+            for nome in membros_antigos
+        }
+
     entraram = []
     sairam = []
 
