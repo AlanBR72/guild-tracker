@@ -942,7 +942,7 @@ def analisar():
     with ThreadPoolExecutor(max_workers=THREADS) as executor:
 
         futures = {
-            executor.submit(last_online_requests, m): m
+            executor.submit(last_online_requests, m["nome"]): m["nome"]
             for m in membros
         }
 
