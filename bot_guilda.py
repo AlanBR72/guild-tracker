@@ -791,15 +791,27 @@ def analisar():
     # DETECTAR ENTRADAS / SAÍDAS
     # =========================
 
-    membros_atuais = membros
+    membros_atuais = {
+        m["nome"]: m["level"]
+        for m in membros
+    }
+
     membros_antigos = carregar_membros()
 
     entraram = []
     sairam = []
 
     if membros_antigos is not None:
-        entraram = list(set(membros_atuais) - set(membros_antigos))
-        sairam = list(set(membros_antigos) - set(membros_atuais))
+
+        entraram = list(
+            set(membros_atuais.keys())
+            - set(membros_antigos.keys())
+        )
+
+        sairam = list(
+            set(membros_antigos.keys())
+            - set(membros_atuais.keys())
+        )
 
     salvar_membros(membros_atuais)
 
@@ -978,7 +990,8 @@ def gerar_msg(in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups,
 
     if entraram:
         for nome in sorted(entraram):
-            msg1 += f"_{nome}_\n"
+            level = membros_atuais.get(nome, "???")
+            msg1 += f"_{nome} (Lv.{level})_\n"
     else:
         msg1 += "_Nenhum_\n"
 
@@ -986,7 +999,8 @@ def gerar_msg(in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups,
 
     if sairam:
         for nome in sorted(sairam):
-            msg1 += f"_{nome}_\n"
+            level = membros_antigos.get(nome, "???")
+            msg1 += f"_{nome} (Lv.{level})_\n"
     else:
         msg1 += "_Nenhum_\n"
 
