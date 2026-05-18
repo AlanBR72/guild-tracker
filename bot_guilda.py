@@ -754,6 +754,7 @@ def last_online_requests(nome):
 def analisar():
 
     membros, guild_datas, levels_atuais = pegar_membros()
+
     print(f"{len(membros)} membros encontrados")
 
     # =========================
@@ -781,11 +782,17 @@ def analisar():
         elif level >= 500:
             distribuicao["500-599"] += 1
 
-    top_levels = sorted(levels_atuais.items(), key=lambda x: x[1], reverse=True)[:5]
+    top_levels = sorted(
+        levels_atuais.items(),
+        key=lambda x: x[1],
+        reverse=True
+    )[:5]
 
     forca_guilda = sum(levels_atuais.values())
 
-    media_level = round(sum(levels_atuais.values()) / len(levels_atuais))
+    media_level = round(
+        sum(levels_atuais.values()) / len(levels_atuais)
+    )
 
     # =========================
     # DETECTAR ENTRADAS / SAÍDAS
@@ -801,17 +808,42 @@ def analisar():
     entraram = []
     sairam = []
 
-    if membros_antigos is not None:
+    # 🔥 compatibilidade com formato antigo
+    if isinstance(membros_antigos, list):
 
-        entraram = list(
-            set(membros_atuais.keys())
-            - set(membros_antigos.keys())
-        )
+        membros_antigos = {
+            nome: "?"
+            for nome in membros_antigos
+        }
 
-        sairam = list(
-            set(membros_antigos.keys())
-            - set(membros_atuais.keys())
-        )
+    if membros_antigos is None:
+        membros_antigos = {}
+
+    # =========================
+    # ENTRARAM
+    # =========================
+
+    for nome, level in membros_atuais.items():
+
+        if nome not in membros_antigos:
+
+            entraram.append({
+                "nome": nome,
+                "level": level
+            })
+
+    # =========================
+    # SAÍRAM
+    # =========================
+
+    for nome, level in membros_antigos.items():
+
+        if nome not in membros_atuais:
+
+            sairam.append({
+                "nome": nome,
+                "level": level
+            })
 
     salvar_membros(membros_atuais)
 
@@ -831,18 +863,31 @@ def analisar():
             if nome in levels_antigos:
 
                 antigo = levels_antigos[nome]
+
                 diff = level - antigo
 
                 if diff > 0:
-                    level_ups.append((nome, antigo, level, diff))
+
+                    level_ups.append((
+                        nome,
+                        antigo,
+                        level,
+                        diff
+                    ))
 
                 elif diff < 0:
-                    level_downs.append((nome, antigo, level, abs(diff)))
+
+                    level_downs.append((
+                        nome,
+                        antigo,
+                        level,
+                        abs(diff)
+                    ))
 
     salvar_levels(levels_atuais)
 
     # =========================
-    # QUASE LEVEL (600 / 700 / 800)
+    # QUASE LEVEL
     # =========================
 
     quase_levels = []
@@ -854,9 +899,19 @@ def analisar():
             faltam = alvo - level
 
             if 0 < faltam <= 5:
-                quase_levels.append((nome, level, alvo, faltam))
 
-    quase_levels = sorted(quase_levels, key=lambda x: x[1], reverse=True)
+                quase_levels.append((
+                    nome,
+                    level,
+                    alvo,
+                    faltam
+                ))
+
+    quase_levels = sorted(
+        quase_levels,
+        key=lambda x: x[1],
+        reverse=True
+    )
 
     # =========================
     # INATIVOS
@@ -867,45 +922,62 @@ def analisar():
 
     with ThreadPoolExecutor(max_workers=THREADS) as executor:
 
-        futures = {executor.submit(last_online_requests, m): m for m in membros}
+        futures = {
+            executor.submit(last_online_requests, m): m
+            for m in membros
+        }
 
         for future in as_completed(futures):
 
             nome = futures[future]
+
             dias = future.result()
 
             if dias is None:
                 continue
 
             if dias >= 20:
+
                 in20.append((nome, dias))
 
             elif dias >= 10:
+
                 in10.append((nome, dias))
 
     # =========================
     # MEMBROS MAIS ANTIGOS
     # =========================
 
-    antigos = sorted(guild_datas.items(), key=lambda x: x[1])[:5]
+    antigos = sorted(
+        guild_datas.items(),
+        key=lambda x: x[1]
+    )[:5]
 
     # =========================
     # MEMBROS SEM TAG
     # =========================
 
     hoje = datetime.now(BRASIL)
+
     membros_sem_tag = []
 
     for nome, join_date in guild_datas.items():
 
-        dias_na_guilda = (hoje - join_date).days
+        dias_na_guilda = (
+            hoje - join_date
+        ).days
 
         if (
             dias_na_guilda > 20
             and "virtue" not in nome.lower()
             and "culpa" not in nome.lower()
         ):
-            membros_sem_tag.append((nome, dias_na_guilda, join_date))
+
+            membros_sem_tag.append((
+                nome,
+                dias_na_guilda,
+                join_date
+            ))
 
     # =========================
     # RETURN FINAL
@@ -971,9 +1043,25 @@ def formatar_k(valor):
     else:
         return str(valor)
     
-def gerar_msg(in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups, level_downs, distribuicao, top_levels, forca_guilda, total_membros, media_level, quase_levels):
+def gerar_msg(
+    in20,
+    in10,
+    antigos,
+    membros_sem_tag,
+    entraram,
+    sairam,
+    level_ups,
+    level_downs,
+    distribuicao,
+    top_levels,
+    forca_guilda,
+    total_membros,
+    media_level,
+    quase_levels
+):
 
     agora = datetime.now(BRASIL)
+
     data = agora.strftime("%d/%m/%Y")
     hora = agora.strftime("%H:%M")
 
@@ -986,22 +1074,69 @@ def gerar_msg(in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups,
     # =========================
 
     msg1 += "\n\n📊 ═══════ **AUDITORIA DA GUILDA** ═══════ 📊"
+
+    # =========================
+    # ENTRARAM
+    # =========================
+
     msg1 += "\n\n📥 **Entraram na guilda**\n"
 
     if entraram:
-        for nome in sorted(entraram):
-            level = membros_atuais.get(nome, "???")
-            msg1 += f"_{nome} (Lv.{level})_\n"
+
+        for p in sorted(
+            entraram,
+            key=lambda x: (
+                x["level"]
+                if isinstance(x["level"], int)
+                else 0
+            ),
+            reverse=True
+        ):
+
+            level = p["level"]
+
+            if level == "?" or level is None:
+                level = "?"
+
+            msg1 += (
+                f"_Lv {level}_ "
+                f"**{p['nome']}**\n"
+            )
+
     else:
+
         msg1 += "_Nenhum_\n"
+
+    # =========================
+    # SAÍRAM
+    # =========================
 
     msg1 += "\n📤 **Saíram da guilda**\n"
 
     if sairam:
-        for nome in sorted(sairam):
-            level = membros_antigos.get(nome, "???")
-            msg1 += f"_{nome} (Lv.{level})_\n"
+
+        for p in sorted(
+            sairam,
+            key=lambda x: (
+                x["level"]
+                if isinstance(x["level"], int)
+                else 0
+            ),
+            reverse=True
+        ):
+
+            level = p["level"]
+
+            if level == "?" or level is None:
+                level = "?"
+
+            msg1 += (
+                f"_Lv {level}_ "
+                f"**{p['nome']}**\n"
+            )
+
     else:
+
         msg1 += "_Nenhum_\n"
 
     # =========================
@@ -1011,10 +1146,26 @@ def gerar_msg(in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups,
     msg1 += "\n📈 **Level ups da guilda**\n"
 
     if level_ups:
-        for nome, antigo, novo, diff in sorted(level_ups, key=lambda x: x[3], reverse=True):
-            msg1 += f"_{nome} ➤ {antigo} → {novo} (+{diff})_\n"
+
+        for nome, antigo, novo, diff in sorted(
+            level_ups,
+            key=lambda x: x[3],
+            reverse=True
+        ):
+
+            msg1 += (
+                f"_{nome} ➤ "
+                f"{antigo} → {novo} "
+                f"(+{diff})_\n"
+            )
+
     else:
+
         msg1 += "_Nenhum_\n"
+
+    # =========================
+    # QUASE LEVEL
+    # =========================
 
     msg1 += "\n🎯 **Quase level importante**\n"
 
@@ -1022,9 +1173,14 @@ def gerar_msg(in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups,
 
         for nome, level, alvo, faltam in quase_levels:
 
-            msg1 += f"_{nome} ➤ {level} (faltam {faltam} para {alvo})_\n"
+            msg1 += (
+                f"_{nome} ➤ "
+                f"{level} "
+                f"(faltam {faltam} para {alvo})_\n"
+            )
 
     else:
+
         msg1 += "_Nenhum_\n"
 
     # =========================
@@ -1034,9 +1190,21 @@ def gerar_msg(in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups,
     msg1 += "\n📉 **Level down da guilda**\n"
 
     if level_downs:
-        for nome, antigo, novo, diff in sorted(level_downs, key=lambda x: x[3], reverse=True):
-            msg1 += f"_{nome} ➤ {antigo} → {novo} (-{diff})_\n"
+
+        for nome, antigo, novo, diff in sorted(
+            level_downs,
+            key=lambda x: x[3],
+            reverse=True
+        ):
+
+            msg1 += (
+                f"_{nome} ➤ "
+                f"{antigo} → {novo} "
+                f"(-{diff})_\n"
+            )
+
     else:
+
         msg1 += "_Nenhum_\n"
 
     # =========================
@@ -1044,10 +1212,16 @@ def gerar_msg(in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups,
     # =========================
 
     msg2 += "**🚫 ═══════ MEMBROS INATIVOS ═══════ 🚫**\n\n"
+
     msg2 += "🚫 **Inativos há mais de 20 dias**\n"
 
     if in20:
-        for nome, dias in sorted(in20, key=lambda x: x[1], reverse=True):
+
+        for nome, dias in sorted(
+            in20,
+            key=lambda x: x[1],
+            reverse=True
+        ):
 
             if dias >= 30:
                 dias_txt = "30+ dias"
@@ -1055,15 +1229,32 @@ def gerar_msg(in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups,
                 dias_txt = f"{dias} dias"
 
             msg2 += f"_{nome} ➤ {dias_txt}_\n"
+
     else:
+
         msg2 += "_Nenhum_\n"
+
+    # =========================
+    # INATIVOS 10+
+    # =========================
 
     msg2 += "\n⚠️ **Inativos há mais de 10 dias**\n"
 
     if in10:
-        for nome, dias in sorted(in10, key=lambda x: x[1], reverse=True):
-            msg2 += f"_{nome} ➤ {dias} dias_\n"
+
+        for nome, dias in sorted(
+            in10,
+            key=lambda x: x[1],
+            reverse=True
+        ):
+
+            msg2 += (
+                f"_{nome} ➤ "
+                f"{dias} dias_\n"
+            )
+
     else:
+
         msg2 += "_Nenhum_\n"
 
     # =========================
@@ -1071,13 +1262,29 @@ def gerar_msg(in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups,
     # =========================
 
     msg2 += "\n\n**🏷️ ═══════ MEMBROS SEM TAG ═══════ 🏷️**\n\n"
-    msg2 += "❌ **Membros há mais de 20 dias sem tag (Virtue / Culpa):**\n"
+
+    msg2 += (
+        "❌ **Membros há mais de 20 dias "
+        "sem tag (Virtue / Culpa):**\n"
+    )
 
     if membros_sem_tag:
-        for nome, dias, join_date in sorted(membros_sem_tag, key=lambda x: x[1], reverse=True):
+
+        for nome, dias, join_date in sorted(
+            membros_sem_tag,
+            key=lambda x: x[1],
+            reverse=True
+        ):
+
             tempo_txt = dias_para_tempo(dias)
-            msg2 += f"_{nome} ➤ {tempo_txt}_\n"
+
+            msg2 += (
+                f"_{nome} ➤ "
+                f"{tempo_txt}_\n"
+            )
+
     else:
+
         msg2 += "_Nenhum_\n"
 
     # =========================
@@ -1086,17 +1293,39 @@ def gerar_msg(in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups,
 
     forca_txt = formatar_k(forca_guilda)
 
-    msg3 += "**🏆 ═══════ ESTATÍSTICAS DA GUILDA ═══════ 🏆**\n\n"
+    msg3 += (
+        "**🏆 ═══════ "
+        "ESTATÍSTICAS DA GUILDA "
+        "═══════ 🏆**\n\n"
+    )
+
     msg3 += f"👥 **Membros:** {total_membros}\n"
     msg3 += f"💪 **Força da Guilda:** _{forca_txt}_\n"
     msg3 += f"⚔️ **Média de level da guilda:** _{media_level}_\n\n"
 
+    # =========================
+    # TOP LEVELS
+    # =========================
+
     msg3 += "🏆 **Top 5 maiores levels da guilda**\n"
 
-    for pos, (nome, level) in enumerate(top_levels, start=1):
+    for pos, (nome, level) in enumerate(
+        top_levels,
+        start=1
+    ):
 
-        medalha = ["🔥","🥈","🥉","4️⃣","5️⃣"][pos-1]
-        msg3 += f"{medalha} _{nome} ➤ level {level}_\n"
+        medalha = [
+            "🔥",
+            "🥈",
+            "🥉",
+            "4️⃣",
+            "5️⃣"
+        ][pos - 1]
+
+        msg3 += (
+            f"{medalha} "
+            f"_{nome} ➤ level {level}_\n"
+        )
 
     # =========================
     # MAIS ANTIGOS
@@ -1104,49 +1333,92 @@ def gerar_msg(in20, in10, antigos, membros_sem_tag, entraram, sairam, level_ups,
 
     msg3 += "\n👴 **5 Membros mais antigos da guilda:**\n"
 
-    for pos, (nome, data_entrada) in enumerate(antigos, start=1):
+    for pos, (nome, data_entrada) in enumerate(
+        antigos,
+        start=1
+    ):
 
         tempo = datetime.now(BRASIL) - data_entrada
+
         dias = tempo.days
+
         anos = dias // 365
         meses = (dias % 365) // 30
 
         if anos == 1:
             ano_txt = "1 ano"
+
         elif anos > 1:
             ano_txt = f"{anos} anos"
+
         else:
             ano_txt = ""
 
         if meses == 1:
             mes_txt = "1 mês"
+
         elif meses > 1:
             mes_txt = f"{meses} meses"
+
         else:
             mes_txt = ""
 
         if ano_txt and mes_txt:
-            tempo_str = f"{ano_txt} e {mes_txt}"
+
+            tempo_str = (
+                f"{ano_txt} e {mes_txt}"
+            )
+
         elif ano_txt:
+
             tempo_str = ano_txt
+
         elif mes_txt:
+
             tempo_str = mes_txt
+
         else:
+
             tempo_str = f"{dias} dias"
 
-        medalha = ["🥇", "🥈", "🥉", "🎖️", "🏅"][pos - 1]
+        medalha = [
+            "🥇",
+            "🥈",
+            "🥉",
+            "🎖️",
+            "🏅"
+        ][pos - 1]
 
-        msg3 += f"{medalha} _{nome} ➤ {tempo_str}_\n"
+        msg3 += (
+            f"{medalha} "
+            f"_{nome} ➤ {tempo_str}_\n"
+        )
 
     # =========================
     # DISTRIBUIÇÃO
     # =========================
 
     msg3 += "\n📊 **Distribuição de levels**\n"
-    msg3 += f"_Level 800+ ➤ {distribuicao['800-899']} membros_\n"
-    msg3 += f"_Level 700-799 ➤ {distribuicao['700-799']} membros_\n"
-    msg3 += f"_Level 600-699 ➤ {distribuicao['600-699']} membros_\n"
-    msg3 += f"_Level 500-599 ➤ {distribuicao['500-599']} membros_\n"
+
+    msg3 += (
+        f"_Level 800+ ➤ "
+        f"{distribuicao['800-899']} membros_\n"
+    )
+
+    msg3 += (
+        f"_Level 700-799 ➤ "
+        f"{distribuicao['700-799']} membros_\n"
+    )
+
+    msg3 += (
+        f"_Level 600-699 ➤ "
+        f"{distribuicao['600-699']} membros_\n"
+    )
+
+    msg3 += (
+        f"_Level 500-599 ➤ "
+        f"{distribuicao['500-599']} membros_\n"
+    )
 
     return msg1, msg2, msg3
     
