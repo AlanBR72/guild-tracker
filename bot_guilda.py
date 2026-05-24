@@ -998,6 +998,7 @@ def analisar():
             dias_na_guilda > 20
             and "virtue" not in nome.lower()
             and "culpa" not in nome.lower()
+            and "pravus" not in nome.lower()
         ):
 
             membros_sem_tag.append((
@@ -1292,7 +1293,7 @@ def gerar_msg(
 
     msg2 += (
         "❌ **Membros há mais de 20 dias "
-        "sem tag (Virtue / Culpa):**\n"
+        "sem tag (Virtue / Culpa / Pravus):**\n"
     )
 
     if membros_sem_tag:
