@@ -8,7 +8,8 @@ from config import (
     MINUTO_ATUALIZACAO_DIARIA,
 )
 from guild import atualizar_visao_geral, monitorar_guilda
-from storage import garantir_data_folder
+from storage import garantir_data_folder, carregar_json, salvar_json
+from config import ARQUIVO_ESTADO
 from tracker import atualizar_peace_killers, atualizar_spy_rank
 
 
@@ -16,6 +17,11 @@ def executar_monitoramento():
     try:
         print("[main] monitoramento rápido iniciado...")
         monitorar_guilda()
+
+        # #visao-geral: cria a mensagem na primeira execução
+        # e depois edita a mesma mensagem a cada 10 minutos.
+        atualizar_visao_geral()
+
     except Exception as e:
         print(f"[main] erro no monitoramento: {e}")
 
@@ -23,12 +29,34 @@ def executar_monitoramento():
 def executar_paineis_diarios():
     try:
         print("[main] atualização diária iniciada...")
-        atualizar_visao_geral()
+
+        # #spy-rank e #peace-killers: criam NOVA mensagem às 03:00.
         atualizar_spy_rank()
         atualizar_peace_killers()
+
         print("[main] atualização diária finalizada.")
     except Exception as e:
         print(f"[main] erro na atualização diária: {e}")
+
+
+def executar_primeira_mensagem_trackers():
+    """Cria a primeira mensagem do #spy-rank e #peace-killers apenas uma vez.
+
+    Depois disso, esses canais passam a receber uma mensagem nova somente às 03:00.
+    """
+    estado = carregar_json(ARQUIVO_ESTADO, {})
+
+    if not estado.get("primeira_msg_spy_rank"):
+        print("[main] criando primeira mensagem do #spy-rank...")
+        atualizar_spy_rank()
+        estado["primeira_msg_spy_rank"] = True
+
+    if not estado.get("primeira_msg_peace_killers"):
+        print("[main] criando primeira mensagem do #peace-killers...")
+        atualizar_peace_killers()
+        estado["primeira_msg_peace_killers"] = True
+
+    salvar_json(ARQUIVO_ESTADO, estado)
 
 
 def deve_atualizar_diario(ultimo_dia):
@@ -51,6 +79,8 @@ def main():
     print("===================================")
 
     ultimo_dia_atualizado = None
+
+    executar_primeira_mensagem_trackers()
 
     while True:
         executar_monitoramento()

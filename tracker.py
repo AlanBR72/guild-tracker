@@ -13,7 +13,7 @@ from config import (
     REQUEST_TIMEOUT,
     USER_AGENT,
 )
-from discord_utils import atualizar_painel, enviar_em_partes
+from discord_utils import enviar_em_partes
 from storage import carregar_json, salvar_json
 from utils import data_hora_brasil, detectar_classe
 
@@ -324,11 +324,21 @@ def gerar_msg_hunted():
 # FUNÇÕES PÚBLICAS
 # =========================
 def atualizar_spy_rank():
+    """Envia uma NOVA mensagem no canal #spy-rank.
+
+    Usado na primeira execução e depois todos os dias às 03:00.
+    Não edita mensagem antiga.
+    """
     msg = gerar_msg_rank_mage()
     msg += "\n\n━━━━━━━━━━━━━━━━━━━━━━\n\n"
     msg += gerar_msg_rank_level()
-    atualizar_painel("spy_rank", "spy_rank", msg)
+    enviar_em_partes("spy_rank", msg)
 
 
 def atualizar_peace_killers():
-    atualizar_painel("peace_killers", "peace_killers", gerar_msg_hunted())
+    """Envia uma NOVA mensagem no canal #peace-killers.
+
+    Usado na primeira execução e depois todos os dias às 03:00.
+    Não edita mensagem antiga.
+    """
+    enviar_em_partes("peace_killers", gerar_msg_hunted())

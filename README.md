@@ -2,37 +2,44 @@
 
 ## Como executar
 
-1. Instale as dependências:
-
 ```bash
 pip install -r requirements.txt
-```
-
-2. Execute:
-
-```bash
 python main.py
 ```
 
-## Funcionamento
+## Funcionamento atual
 
-- A cada 10 minutos:
-  - verifica entradas e saídas da Virtue;
-  - verifica level ups, level downs e quase levels importantes;
-  - envia mensagem nova somente quando houver mudança.
+### 🛡️ STATUS GUILDA
 
-- Todos os dias às 03:00 no horário do Brasil:
-  - atualiza o painel `#visao-geral`;
-  - atualiza o painel `#spy-rank`;
-  - atualiza o painel `#peace-killers`.
+- `#visao-geral`
+  - cria a mensagem na primeira execução;
+  - depois edita a mesma mensagem a cada 10 minutos.
 
-## Canais
+### 🏆 TRACKER
 
-- `#spy-rank`: painel editado.
-- `#visao-geral`: painel editado.
-- `#entrada-e-saidas`: nova mensagem quando houver mudança.
-- `#up-levels`: nova mensagem quando houver mudança.
-- `#peace-killers`: painel editado.
+- `#spy-rank`
+  - cria uma mensagem na primeira execução;
+  - depois cria uma nova mensagem todos os dias às 03:00.
+
+### 🎯 TRACKER INIMIGOS
+
+- `#peace-killers`
+  - cria uma mensagem na primeira execução;
+  - depois cria uma nova mensagem todos os dias às 03:00.
+
+### Canais de histórico
+
+- `#entrada-e-saidas`
+  - verifica a cada 10 minutos;
+  - envia nova mensagem somente se houver entrada ou saída.
+
+- `#up-levels`
+  - verifica a cada 10 minutos;
+  - envia nova mensagem somente se houver level up, level down ou quase level.
+
+## Arquivos locais
+
+A pasta `data/` guarda os estados JSON usados pelo bot. Ela é criada automaticamente se não existir.
 
 ## Aviso de segurança
 
