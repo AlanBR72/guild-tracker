@@ -15,7 +15,7 @@ CHARACTER_URL = "https://www.rucoyonline.com/characters/{}"
 # =========================
 # WEBHOOKS DO DISCORD
 # =========================
-WEBHOOK_SPY_RANK = "https://discord.com/api/webhooks/1494393213409300531/iX8kJAHYJdxQBZCGAOzb0vwC6HquvcfO6EZ2mFThwJ7phDDQbELMXcFW5t01P1rKYZ"
+WEBHOOK_SPY_RANK = "https://discord.com/api/webhooks/1494393213409300531/iX8kJAHYJdxQBZCGAOzb0vwC6HquvcfO6EZ2mFThwJ7phDDQbBqELMXcFW5t01P1rKYZ"
 WEBHOOK_VISAO_GERAL = "https://discord.com/api/webhooks/1524443607837442170/GZ1t2ayHAY-pdNLWyo2dqXYHTkPQYY8tWDqJHKTOnmQrCkwK0EbI4ckPTVeUS1SqUwP_"
 WEBHOOK_ENTRADA_SAIDA = "https://discord.com/api/webhooks/1481362798326972448/aRQkId2Le1rzymVrtXQHRgxv2c6RU7GPMrCcg7R6sQ_FXfGQv6xeaJjrOtCXYArL57Up"
 WEBHOOK_UP_LEVELS = "https://discord.com/api/webhooks/1524443815920799888/kUNlK2oBN8CCqusF9XX4OJRPALOH4ehgbB066kmVONMsv-sW9G2NwaaM_1wYnRv2hyhq"
