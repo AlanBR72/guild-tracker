@@ -8,6 +8,7 @@ from bs4 import BeautifulSoup
 from config import (
     ARQUIVO_ESTADO,
     ARQUIVO_HISTORICO_LEVELS,
+    ARQUIVO_HISTORICO_ENTRADA_SAIDA,
     ARQUIVO_LEVELS,
     ARQUIVO_MEMBROS,
     ARQUIVO_QUASE_LEVEL,
@@ -121,16 +122,53 @@ def last_online_requests(nome):
 # =========================
 # COMPARAÇÕES RÁPIDAS
 # =========================
+def join_to_iso(join_date):
+    if not join_date:
+        return None
+    try:
+        return join_date.isoformat()
+    except Exception:
+        return str(join_date)
+
+
 def normalizar_membros_antigos(membros_antigos):
+    """Normaliza formatos antigos e novos de membros_guilda.json.
+
+    Formato antigo: {"Nick": 700}
+    Formato novo: {"Nick": {"level": 700, "join": "..."}}
+    """
     if not membros_antigos:
         return {}
+
     if isinstance(membros_antigos, list):
-        return {nome: "?" for nome in membros_antigos}
-    return membros_antigos
+        return {nome: {"level": "?", "join": None} for nome in membros_antigos}
+
+    normalizado = {}
+    if isinstance(membros_antigos, dict):
+        for nome, valor in membros_antigos.items():
+            if isinstance(valor, dict):
+                normalizado[nome] = {
+                    "level": valor.get("level", "?"),
+                    "join": valor.get("join"),
+                }
+            else:
+                normalizado[nome] = {"level": valor, "join": None}
+
+    return normalizado
 
 
-def detectar_entradas_saidas(levels_atuais):
-    membros_atuais = {nome: level for nome, level in levels_atuais.items()}
+def montar_membros_atuais(levels_atuais, guild_datas):
+    return {
+        nome: {
+            "level": level,
+            "join": join_to_iso(guild_datas.get(nome)),
+        }
+        for nome, level in levels_atuais.items()
+    }
+
+
+def detectar_entradas_saidas(levels_atuais, guild_datas):
+    membros_atuais = montar_membros_atuais(levels_atuais, guild_datas)
     membros_antigos = normalizar_membros_antigos(carregar_json(ARQUIVO_MEMBROS, {}))
 
     primeira_execucao = not membros_antigos
@@ -138,15 +176,64 @@ def detectar_entradas_saidas(levels_atuais):
     sairam = []
 
     if not primeira_execucao:
-        for nome, level in membros_atuais.items():
+        for nome, dados in membros_atuais.items():
             if nome not in membros_antigos:
-                entraram.append({"nome": nome, "level": level})
+                entraram.append({
+                    "nome": nome,
+                    "level": dados.get("level"),
+                    "join": dados.get("join"),
+                })
 
-        for nome, level in membros_antigos.items():
+        for nome, dados in membros_antigos.items():
             if nome not in membros_atuais:
-                sairam.append({"nome": nome, "level": level})
+                entraram_level = dados.get("level") if isinstance(dados, dict) else dados
+                sairam.append({
+                    "nome": nome,
+                    "level": entraram_level,
+                    "join": dados.get("join") if isinstance(dados, dict) else None,
+                })
 
     return primeira_execucao, membros_atuais, entraram, sairam
+
+
+def separar_trocas_nick(entraram, sairam):
+    """Detecta troca de nick para evitar falso alerta de saída + entrada.
+
+    Regra principal: saiu e entrou no mesmo ciclo, com mesmo level e mesma
+    data de entrada na guilda. Quando a data antiga não existir por compatibilidade
+    com JSON antigo, faz fallback só pelo level se houver um único par possível.
+    """
+    trocas = []
+    entradas_restantes = list(entraram)
+    saidas_restantes = []
+
+    for saiu in sairam:
+        candidatos = []
+        for entrou in entradas_restantes:
+            if entrou.get("level") != saiu.get("level"):
+                continue
+
+            join_saiu = saiu.get("join")
+            join_entrou = entrou.get("join")
+
+            if join_saiu and join_entrou and join_saiu == join_entrou:
+                candidatos.append(entrou)
+            elif not join_saiu:
+                # Compatibilidade com histórico antigo que não salvava join date.
+                candidatos.append(entrou)
+
+        if len(candidatos) == 1:
+            entrou = candidatos[0]
+            trocas.append({
+                "antigo": saiu.get("nome"),
+                "novo": entrou.get("nome"),
+                "level": entrou.get("level"),
+            })
+            entradas_restantes.remove(entrou)
+        else:
+            saidas_restantes.append(saiu)
+
+    return entradas_restantes, saidas_restantes, trocas
 
 
 def detectar_level_changes(levels_atuais):
@@ -272,27 +359,107 @@ def calcular_status(membros, guild_datas, levels_atuais):
 # =========================
 # MENSAGENS
 # =========================
-def gerar_msg_entrada_saida(entraram, sairam):
+def criar_eventos_entrada_saida(entraram, sairam, trocas_nick):
+    data, hora, completo = data_hora_segundos_brasil()
+    eventos = []
+
+    for p in entraram:
+        eventos.append({
+            "tipo": "entrada",
+            "timestamp": f"{data} {completo}",
+            "nome": p.get("nome"),
+            "level": p.get("level"),
+        })
+
+    for p in sairam:
+        eventos.append({
+            "tipo": "saida",
+            "timestamp": f"{data} {completo}",
+            "nome": p.get("nome"),
+            "level": p.get("level"),
+        })
+
+    for p in trocas_nick:
+        eventos.append({
+            "tipo": "nick",
+            "timestamp": f"{data} {completo}",
+            "antigo": p.get("antigo"),
+            "novo": p.get("novo"),
+            "level": p.get("level"),
+        })
+
+    return eventos
+
+
+def carregar_historico_entrada_saida():
+    historico = carregar_json(ARQUIVO_HISTORICO_ENTRADA_SAIDA, [])
+    return historico if isinstance(historico, list) else []
+
+
+def salvar_historico_entrada_saida(historico):
+    salvar_json(ARQUIVO_HISTORICO_ENTRADA_SAIDA, historico)
+
+
+def gerar_msg_entrada_saida_historico(historico):
     data, hora = data_hora_brasil()
-    msg = f"_🕒 Detectado em: {data} • {hora} (Brasil)_\n\n"
-    msg += "📥📤 **ENTRADAS E SAÍDAS — GUILD**\n\n"
+    msg = "📋 **Histórico de Entradas e Saídas (Guilt Of Virtue):**\n\n"
 
-    msg += "📥 **Entraram na guilda**\n"
-    if entraram:
-        for p in sorted(entraram, key=lambda x: x["level"] if isinstance(x["level"], int) else 0, reverse=True):
-            msg += f"_Lv {p['level']}_ **{p['nome']}**\n"
+    if historico:
+        for e in historico:
+            tipo = e.get("tipo")
+            if tipo == "entrada":
+                msg += (
+                    f"• `{e.get('timestamp')}` — 🟢 **{e.get('nome')}** "
+                    f"entrou na guilda (Lv {e.get('level')})\n\n"
+                )
+            elif tipo == "saida":
+                msg += (
+                    f"• `{e.get('timestamp')}` — 🔴 **{e.get('nome')}** "
+                    f"saiu da guilda (Lv {e.get('level')})\n\n"
+                )
+            elif tipo == "nick":
+                msg += (
+                    f"• `{e.get('timestamp')}` — 🔁 **{e.get('antigo')}** "
+                    f"alterou o nick para **{e.get('novo')}** (Lv {e.get('level')})\n\n"
+                )
     else:
-        msg += "_Nenhum_\n"
+        msg += "_Nenhuma entrada ou saída registrada ainda._\n"
 
-    msg += "\n📤 **Saíram da guilda**\n"
-    if sairam:
-        for p in sorted(sairam, key=lambda x: x["level"] if isinstance(x["level"], int) else 0, reverse=True):
-            msg += f"_Lv {p['level']}_ **{p['nome']}**\n"
-    else:
-        msg += "_Nenhum_\n"
-
+    msg += f"_🕒 Atualizado em: {data} • {hora} (Brasil)_"
     return msg
 
+
+def criar_novo_painel_entrada_saida(mensagem):
+    estado = carregar_json(ARQUIVO_ESTADO, {})
+    novo_id = enviar("entrada_saida", mensagem)
+    if novo_id:
+        estado["entrada_saida"] = novo_id
+        salvar_json(ARQUIVO_ESTADO, estado)
+    return novo_id
+
+
+def atualizar_painel_entrada_saida_com_rotacao(eventos):
+    historico_atual = carregar_historico_entrada_saida()
+    historico_tentativo = historico_atual + eventos
+    mensagem_tentativa = gerar_msg_entrada_saida_historico(historico_tentativo)
+
+    if len(mensagem_tentativa) >= DISCORD_LIMITE:
+        print("[guild] histórico de #entrada-e-saidas chegou perto do limite. criando nova mensagem zerada.")
+        historico_novo = eventos
+        mensagem_nova = gerar_msg_entrada_saida_historico(historico_novo)
+        salvar_historico_entrada_saida(historico_novo)
+        criar_novo_painel_entrada_saida(mensagem_nova)
+        return
+
+    salvar_historico_entrada_saida(historico_tentativo)
+    atualizar_painel("entrada_saida", "entrada_saida", mensagem_tentativa)
+
+
+def gerar_msg_entrada_saida(entraram, sairam):
+    """Compatibilidade: transforma entrada/saída em histórico temporário."""
+    entradas_restantes, saidas_restantes, trocas = separar_trocas_nick(entraram, sairam)
+    eventos = criar_eventos_entrada_saida(entradas_restantes, saidas_restantes, trocas)
+    return gerar_msg_entrada_saida_historico(eventos)
 
 def criar_eventos_levels(level_ups, level_downs, quase_levels):
     """Transforma mudanças de level em eventos de histórico.
@@ -487,12 +654,12 @@ def gerar_msg_visao_geral(status):
 # FUNÇÕES PÚBLICAS
 # =========================
 def monitorar_guilda():
-    membros, _, levels_atuais = pegar_membros()
+    membros, guild_datas, levels_atuais = pegar_membros()
     if not levels_atuais:
         print("[guild] nenhum membro encontrado. monitoramento ignorado.")
         return
 
-    primeira_membros, membros_atuais, entraram, sairam = detectar_entradas_saidas(levels_atuais)
+    primeira_membros, membros_atuais, entraram, sairam = detectar_entradas_saidas(levels_atuais, guild_datas)
     primeira_levels, level_ups, level_downs = detectar_level_changes(levels_atuais)
     quase_levels, novo_estado_quase = detectar_quase_levels(levels_atuais)
 
@@ -505,7 +672,9 @@ def monitorar_guilda():
         return
 
     if entraram or sairam:
-        enviar_em_partes("entrada_saida", gerar_msg_entrada_saida(entraram, sairam))
+        entradas_restantes, saidas_restantes, trocas_nick = separar_trocas_nick(entraram, sairam)
+        eventos_entrada_saida = criar_eventos_entrada_saida(entradas_restantes, saidas_restantes, trocas_nick)
+        atualizar_painel_entrada_saida_com_rotacao(eventos_entrada_saida)
 
     if level_ups or level_downs or quase_levels:
         eventos = criar_eventos_levels(level_ups, level_downs, quase_levels)

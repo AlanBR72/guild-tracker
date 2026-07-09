@@ -34,6 +34,7 @@ ARQUIVO_RANK = f"{DATA_FOLDER}/rank_mage.json"
 ARQUIVO_RANK_LEVEL = f"{DATA_FOLDER}/rank_level.json"
 ARQUIVO_QUASE_LEVEL = f"{DATA_FOLDER}/quase_level_notificado.json"
 ARQUIVO_HISTORICO_LEVELS = f"{DATA_FOLDER}/historico_levels.json"
+ARQUIVO_HISTORICO_ENTRADA_SAIDA = f"{DATA_FOLDER}/historico_entrada_saida.json"
 ARQUIVO_MOB_XP_PEACE_LEVELS = f"{DATA_FOLDER}/mob_xp_peace_levels.json"
 ARQUIVO_HISTORICO_MOB_XP_PEACE = f"{DATA_FOLDER}/historico_mob_xp_peace.json"
 

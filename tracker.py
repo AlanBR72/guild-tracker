@@ -266,16 +266,18 @@ def analisar_hunted():
     dados_antigos = carregar_json(ARQUIVO_HUNTED, {"membros": [], "levels": {}})
     membros_antigos = dados_antigos.get("membros", [])
     levels_antigos = dados_antigos.get("levels", {})
+    data, hora = data_hora_brasil()
+    momento = f"{data} • {hora}"
 
     entraram = []
     sairam = []
     if membros_antigos:
         for nome in membros:
             if nome not in membros_antigos:
-                entraram.append((nome, levels_atuais.get(nome, 0)))
+                entraram.append((nome, levels_atuais.get(nome, 0), momento))
         for nome in membros_antigos:
             if nome not in membros:
-                sairam.append((nome, levels_antigos.get(nome, 0)))
+                sairam.append((nome, levels_antigos.get(nome, 0), momento))
 
     ups = []
     downs = []
@@ -284,9 +286,10 @@ def analisar_hunted():
             antigo = levels_antigos[nome]
             diff = level - antigo
             if diff > 0:
-                ups.append((nome, antigo, level))
+                ups.append((nome, antigo, level, momento))
             elif diff < 0:
-                downs.append((nome, antigo, level))
+                # Downs ficam exclusivamente no canal mob xp peace.
+                downs.append((nome, antigo, level, momento))
 
     total = len(levels_atuais)
     media = round(sum(levels_atuais.values()) / total) if total else 0
@@ -295,11 +298,11 @@ def analisar_hunted():
     l800 = sum(1 for l in levels_atuais.values() if l >= 800)
 
     salvar_json(ARQUIVO_HUNTED, {"membros": membros, "levels": levels_atuais})
-    return total, media, l600, l700, l800, entraram, sairam, ups, downs
+    return total, media, l600, l700, l800, entraram, sairam, ups
 
 
 def gerar_msg_hunted():
-    total, media, l600, l700, l800, entraram, sairam, ups, downs = analisar_hunted()
+    total, media, l600, l700, l800, entraram, sairam, ups = analisar_hunted()
     data, hora = data_hora_brasil()
     msg = f"_🕒 Atualizado em: {data} • {hora}_\n\n"
     msg += "🎯 **RELATÓRIO — PEACE KILLERS (HUNTED)** 🎯\n\n"
@@ -311,16 +314,14 @@ def gerar_msg_hunted():
     msg += f"_Level 600+ ➤ {l600} membros_\n\n"
 
     msg += "📥 **Entraram**\n"
-    msg += "\n".join(f"_{n} ➤ lvl {lvl}_" for n, lvl in entraram) if entraram else "_Nenhum_"
+    msg += "\n".join(f"_**{n}** ➤ lvl {lvl} • {momento}_" for n, lvl, momento in entraram) if entraram else "_Nenhum_"
 
     msg += "\n\n📤 **Saíram**\n"
-    msg += "\n".join(f"_{n} ➤ lvl {lvl}_" for n, lvl in sairam) if sairam else "_Nenhum_"
+    msg += "\n".join(f"_**{n}** ➤ lvl {lvl} • {momento}_" for n, lvl, momento in sairam) if sairam else "_Nenhum_"
 
     msg += "\n\n📈 **Ups de level**\n"
-    msg += "\n".join(f"_{n} ➤ {a} → {b} (+{b-a})_" for n, a, b in ups) if ups else "_Nenhum_"
+    msg += "\n".join(f"_**{n}** ➤ {a} → {b} (+{b-a}) • {momento}_" for n, a, b, momento in ups) if ups else "_Nenhum_"
 
-    msg += "\n\n📉 **Downs de level**\n"
-    msg += "\n".join(f"_{n} ➤ {a} → {b} (-{a-b})_" for n, a, b in downs) if downs else "_Nenhum_"
     return msg
 
 
