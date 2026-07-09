@@ -10,13 +10,14 @@ from config import (
 from guild import atualizar_visao_geral, monitorar_guilda
 from storage import garantir_data_folder, carregar_json, salvar_json
 from config import ARQUIVO_ESTADO
-from tracker import atualizar_peace_killers, atualizar_spy_rank
+from tracker import atualizar_peace_killers, atualizar_spy_rank, monitorar_mob_xp_peace
 
 
 def executar_monitoramento():
     try:
         print("[main] monitoramento rápido iniciado...")
         monitorar_guilda()
+        monitorar_mob_xp_peace()
 
         # #visao-geral: cria a mensagem na primeira execução
         # e depois edita a mesma mensagem a cada 10 minutos.
@@ -74,7 +75,7 @@ def main():
 
     print("===================================")
     print(" Rucoy Guild Tracker iniciado")
-    print(" Monitoramento: a cada 10 minutos")
+    print(" Monitoramento: a cada 5 minutos")
     print(" Painéis diários: 03:00 Brasil")
     print("===================================")
 

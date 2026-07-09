@@ -13,7 +13,7 @@ python main.py
 
 - `#visao-geral`
   - cria a mensagem na primeira execução;
-  - depois edita a mesma mensagem a cada 10 minutos.
+  - depois edita a mesma mensagem a cada 5 minutos.
 
 ### 🏆 TRACKER
 
@@ -30,12 +30,15 @@ python main.py
 ### Canais de histórico
 
 - `#entrada-e-saidas`
-  - verifica a cada 10 minutos;
+  - verifica a cada 5 minutos;
   - envia nova mensagem somente se houver entrada ou saída.
 
 - `#up-levels`
-  - verifica a cada 10 minutos;
-  - envia nova mensagem somente se houver level up, level down ou quase level.
+  - na primeira execução salva os levels de todos e não envia alerta falso;
+  - verifica a cada 5 minutos;
+  - se houver level up, level down ou quase level, atualiza a mesma mensagem fixa;
+  - mantém histórico em ordem cronológica: mais antigos em cima e mais recentes embaixo;
+  - a seção de quase level só aparece quando houver alguém faltando 5 levels ou menos para 600, 700 ou 800.
 
 ## Arquivos locais
 
@@ -44,3 +47,8 @@ A pasta `data/` guarda os estados JSON usados pelo bot. Ela é criada automatica
 ## Aviso de segurança
 
 Os webhooks estão no `config.py`. Depois de testar, é recomendável recriar os webhooks no Discord e substituir os links.
+
+
+## Mob XP Peace
+
+O canal `#mob-xp-peace` monitora a Peace Killers a cada 5 minutos e registra somente membros que descerem de level. A primeira execução salva a base sem enviar alerta falso. Quando o histórico chega perto de 1900 caracteres, o bot cria uma nova mensagem e passa a editar essa nova mensagem.

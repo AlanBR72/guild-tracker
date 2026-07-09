@@ -12,6 +12,11 @@ def data_hora_brasil():
     return agora.strftime("%d/%m/%Y"), agora.strftime("%H:%M")
 
 
+def data_hora_segundos_brasil():
+    agora = agora_brasil()
+    return agora.strftime("%d/%m/%Y"), agora.strftime("%H:%M"), agora.strftime("%H:%M:%S")
+
+
 def formatar_k(valor: int) -> str:
     if valor >= 1000:
         return f"{valor / 1000:.1f}k"

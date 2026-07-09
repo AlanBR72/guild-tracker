@@ -4,6 +4,7 @@ from config import (
     DISCORD_LIMITE,
     WEBHOOK_ENTRADA_SAIDA,
     WEBHOOK_PEACE_KILLERS,
+    WEBHOOK_MOB_XP_PEACE,
     WEBHOOK_SPY_RANK,
     WEBHOOK_UP_LEVELS,
     WEBHOOK_VISAO_GERAL,
@@ -17,6 +18,7 @@ WEBHOOKS = {
     "entrada_saida": WEBHOOK_ENTRADA_SAIDA,
     "up_levels": WEBHOOK_UP_LEVELS,
     "peace_killers": WEBHOOK_PEACE_KILLERS,
+    "mob_xp_peace": WEBHOOK_MOB_XP_PEACE,
 }
 
 

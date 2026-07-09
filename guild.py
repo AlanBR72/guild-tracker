@@ -6,11 +6,14 @@ import requests
 from bs4 import BeautifulSoup
 
 from config import (
+    ARQUIVO_ESTADO,
+    ARQUIVO_HISTORICO_LEVELS,
     ARQUIVO_LEVELS,
     ARQUIVO_MEMBROS,
     ARQUIVO_QUASE_LEVEL,
     BRASIL,
     CHARACTER_URL,
+    DISCORD_LIMITE,
     GUILD_URL,
     INATIVO_AVISO,
     INATIVO_REMOCAO,
@@ -21,9 +24,9 @@ from config import (
     THREADS,
     USER_AGENT,
 )
-from discord_utils import atualizar_painel, enviar_em_partes
+from discord_utils import atualizar_painel, enviar, enviar_em_partes
 from storage import carregar_json, salvar_json
-from utils import agora_brasil, data_hora_brasil, dias_para_tempo, formatar_k
+from utils import agora_brasil, data_hora_brasil, data_hora_segundos_brasil, dias_para_tempo, formatar_k
 
 session = requests.Session()
 session.headers.update({"User-Agent": USER_AGENT})
@@ -291,33 +294,140 @@ def gerar_msg_entrada_saida(entraram, sairam):
     return msg
 
 
-def gerar_msg_up_levels(level_ups, level_downs, quase_levels):
+def criar_eventos_levels(level_ups, level_downs, quase_levels):
+    """Transforma mudanças de level em eventos de histórico.
+
+    A primeira execução não chama esta função, então não gera alertas falsos.
+    """
+    data, hora, completo = data_hora_segundos_brasil()
+    eventos = []
+
+    for nome, antigo, novo, diff in level_ups:
+        eventos.append({
+            "tipo": "up",
+            "data": data,
+            "hora": completo,
+            "timestamp": f"{data} {completo}",
+            "nome": nome,
+            "antigo": antigo,
+            "novo": novo,
+            "diff": diff,
+        })
+
+    for nome, antigo, novo, diff in level_downs:
+        eventos.append({
+            "tipo": "down",
+            "data": data,
+            "hora": completo,
+            "timestamp": f"{data} {completo}",
+            "nome": nome,
+            "antigo": antigo,
+            "novo": novo,
+            "diff": diff,
+        })
+
+    for nome, level, alvo, faltam in quase_levels:
+        eventos.append({
+            "tipo": "quase",
+            "data": data,
+            "hora": completo,
+            "timestamp": f"{data} {completo}",
+            "nome": nome,
+            "level": level,
+            "alvo": alvo,
+            "faltam": faltam,
+        })
+
+    return eventos
+
+
+def carregar_historico_levels():
+    historico = carregar_json(ARQUIVO_HISTORICO_LEVELS, [])
+    return historico if isinstance(historico, list) else []
+
+
+def salvar_historico_levels(historico):
+    # Mantém o histórico em ordem cronológica: mais antigos em cima, mais recentes embaixo.
+    salvar_json(ARQUIVO_HISTORICO_LEVELS, historico)
+
+
+def criar_novo_painel_up_levels(mensagem):
+    """Cria uma nova mensagem ativa no #up-levels e salva o novo ID.
+
+    Usado quando a mensagem atual chega perto do limite do Discord.
+    A mensagem antiga fica no canal como histórico, e a nova começa um histórico limpo.
+    """
+    estado = carregar_json(ARQUIVO_ESTADO, {})
+    novo_id = enviar("up_levels", mensagem)
+    if novo_id:
+        estado["up_levels"] = novo_id
+        salvar_json(ARQUIVO_ESTADO, estado)
+    return novo_id
+
+
+def atualizar_painel_up_levels_com_rotacao(eventos):
+    """Atualiza a mensagem fixa de #up-levels.
+
+    Se o histórico passar do limite de caracteres do Discord, cria uma nova
+    mensagem e zera o histórico antigo, mantendo somente os eventos novos
+    nessa nova mensagem.
+    """
+    historico_atual = carregar_historico_levels()
+    historico_tentativo = historico_atual + eventos
+    mensagem_tentativa = gerar_msg_up_levels_historico(historico_tentativo)
+
+    if len(mensagem_tentativa) >= DISCORD_LIMITE:
+        print("[guild] histórico de #up-levels chegou perto do limite. criando nova mensagem zerada.")
+        historico_novo = eventos
+        mensagem_nova = gerar_msg_up_levels_historico(historico_novo)
+        salvar_historico_levels(historico_novo)
+        criar_novo_painel_up_levels(mensagem_nova)
+        return
+
+    salvar_historico_levels(historico_tentativo)
+    atualizar_painel("up_levels", "up_levels", mensagem_tentativa)
+
+
+def gerar_msg_up_levels_historico(historico):
     data, hora = data_hora_brasil()
-    msg = f"_🕒 Detectado em: {data} • {hora} (Brasil)_\n\n"
-    msg += "📈 **UP LEVELS — GUILD**\n\n"
 
-    msg += "📈 **Level ups da guilda**\n"
-    if level_ups:
-        for nome, antigo, novo, diff in sorted(level_ups, key=lambda x: x[3], reverse=True):
-            msg += f"_{nome} ➤ {antigo} → {novo} (+{diff})_\n"
+    msg = "📈 **Histórico de Levels (Guilt Of Virtue):**\n\n"
+
+    eventos_level = [e for e in historico if e.get("tipo") in ("up", "down")]
+    eventos_quase = [e for e in historico if e.get("tipo") == "quase"]
+
+    if eventos_level:
+        for e in eventos_level:
+            if e.get("tipo") == "up":
+                msg += (
+                    f"• `{e.get('timestamp')}` — **{e.get('nome')}** "
+                    f"(Lv {e.get('antigo')} → {e.get('novo')}) 🆙 +{e.get('diff')}\n"
+                )
+            elif e.get("tipo") == "down":
+                msg += (
+                    f"• `{e.get('timestamp')}` — **{e.get('nome')}** "
+                    f"(Lv {e.get('antigo')} → {e.get('novo')}) 🔻 -{e.get('diff')}\n"
+                )
     else:
-        msg += "_Nenhum_\n"
+        msg += "_Nenhum level up/down registrado ainda._\n"
 
-    msg += "\n🎯 **Quase level importante**\n"
-    if quase_levels:
-        for nome, level, alvo, faltam in sorted(quase_levels, key=lambda x: x[1], reverse=True):
-            msg += f"_{nome} ➤ {level} (faltam {faltam} para {alvo})_\n"
-    else:
-        msg += "_Nenhum_\n"
+    if eventos_quase:
+        msg += "\n🎯 **Quase level importante:**\n"
+        for e in eventos_quase:
+            faltam_txt = "falta" if e.get("faltam") == 1 else "faltam"
+            msg += (
+                f"• `{e.get('timestamp')}` — **{e.get('nome')}** — "
+                f"Lv **{e.get('level')}** ({faltam_txt} **{e.get('faltam')}** para {e.get('alvo')})\n"
+            )
 
-    msg += "\n📉 **Level down da guilda**\n"
-    if level_downs:
-        for nome, antigo, novo, diff in sorted(level_downs, key=lambda x: x[3], reverse=True):
-            msg += f"_{nome} ➤ {antigo} → {novo} (-{diff})_\n"
-    else:
-        msg += "_Nenhum_\n"
-
+    msg += f"\n_🕒 Atualizado em: {data} • {hora} (Brasil)_"
     return msg
+
+
+def gerar_msg_up_levels(level_ups, level_downs, quase_levels):
+    """Compatibilidade: gera uma mensagem no formato antigo somente se algum módulo ainda chamar."""
+    eventos = criar_eventos_levels(level_ups, level_downs, quase_levels)
+    return gerar_msg_up_levels_historico(eventos)
 
 
 def gerar_msg_visao_geral(status):
@@ -398,7 +508,8 @@ def monitorar_guilda():
         enviar_em_partes("entrada_saida", gerar_msg_entrada_saida(entraram, sairam))
 
     if level_ups or level_downs or quase_levels:
-        enviar_em_partes("up_levels", gerar_msg_up_levels(level_ups, level_downs, quase_levels))
+        eventos = criar_eventos_levels(level_ups, level_downs, quase_levels)
+        atualizar_painel_up_levels_com_rotacao(eventos)
 
     salvar_json(ARQUIVO_MEMBROS, membros_atuais)
     salvar_json(ARQUIVO_LEVELS, levels_atuais)

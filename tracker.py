@@ -3,6 +3,8 @@ from bs4 import BeautifulSoup
 
 from config import (
     ARQUIVO_HUNTED,
+    ARQUIVO_HISTORICO_MOB_XP_PEACE,
+    ARQUIVO_MOB_XP_PEACE_LEVELS,
     ARQUIVO_RANK,
     ARQUIVO_RANK_LEVEL,
     HIGHSCORE_DISTANCE,
@@ -10,12 +12,14 @@ from config import (
     HIGHSCORE_MELEE,
     HIGHSCORE_XP,
     HUNTED_URL,
+    ARQUIVO_ESTADO,
+    DISCORD_LIMITE,
     REQUEST_TIMEOUT,
     USER_AGENT,
 )
-from discord_utils import enviar_em_partes
+from discord_utils import atualizar_painel, enviar, enviar_em_partes
 from storage import carregar_json, salvar_json
-from utils import data_hora_brasil, detectar_classe
+from utils import data_hora_brasil, data_hora_segundos_brasil, detectar_classe
 
 session = requests.Session()
 session.headers.update({"User-Agent": USER_AGENT})
@@ -342,3 +346,120 @@ def atualizar_peace_killers():
     Não edita mensagem antiga.
     """
     enviar_em_partes("peace_killers", gerar_msg_hunted())
+
+
+# =========================
+# MOB XP PEACE KILLERS
+# =========================
+def criar_eventos_mob_xp_peace(level_downs):
+    """Cria eventos de level down da Peace Killers em ordem cronológica."""
+    data, hora = data_hora_segundos_brasil()
+    eventos = []
+
+    for nome, antigo, novo in level_downs:
+        eventos.append({
+            "data": data,
+            "hora": hora,
+            "timestamp": f"{data} {hora}",
+            "nome": nome,
+            "antigo": antigo,
+            "novo": novo,
+            "diff": antigo - novo,
+        })
+
+    return eventos
+
+
+def carregar_historico_mob_xp_peace():
+    historico = carregar_json(ARQUIVO_HISTORICO_MOB_XP_PEACE, [])
+    return historico if isinstance(historico, list) else []
+
+
+def salvar_historico_mob_xp_peace(historico):
+    salvar_json(ARQUIVO_HISTORICO_MOB_XP_PEACE, historico)
+
+
+def gerar_msg_mob_xp_peace_historico(historico):
+    data, hora = data_hora_brasil()
+
+    msg = "📉 **Histórico de Mob XP (Peace Killers):**\n\n"
+    msg += f"📊 **Total de Mob XP registrados:** {len(historico)}\n\n"
+
+    if historico:
+        for e in historico:
+            msg += (
+                f"• `{e.get('timestamp')}` — **{e.get('nome')}** "
+                f"(Lv {e.get('antigo')} → {e.get('novo')}) 🔻 -{e.get('diff')}\n"
+            )
+    else:
+        msg += "_Nenhum mob XP registrado ainda._\n"
+
+    msg += f"\n_🕒 Atualizado em: {data} • {hora} (Brasil)_"
+    return msg
+
+
+def criar_novo_painel_mob_xp_peace(mensagem):
+    """Cria uma nova mensagem ativa no #mob-xp-peace e salva o ID."""
+    estado = carregar_json(ARQUIVO_ESTADO, {})
+    novo_id = enviar("mob_xp_peace", mensagem)
+    if novo_id:
+        estado["mob_xp_peace"] = novo_id
+        salvar_json(ARQUIVO_ESTADO, estado)
+    return novo_id
+
+
+def atualizar_painel_mob_xp_peace_com_rotacao(eventos):
+    """Atualiza a mensagem fixa de Mob XP Peace.
+
+    Se passar do limite do Discord, cria uma nova mensagem zerada e passa
+    a editar essa nova mensagem. A antiga fica no canal como histórico.
+    """
+    historico_atual = carregar_historico_mob_xp_peace()
+    historico_tentativo = historico_atual + eventos
+    mensagem_tentativa = gerar_msg_mob_xp_peace_historico(historico_tentativo)
+
+    if len(mensagem_tentativa) >= DISCORD_LIMITE:
+        print("[tracker] histórico de #mob-xp-peace chegou perto do limite. criando nova mensagem zerada.")
+        historico_novo = eventos
+        mensagem_nova = gerar_msg_mob_xp_peace_historico(historico_novo)
+        salvar_historico_mob_xp_peace(historico_novo)
+        criar_novo_painel_mob_xp_peace(mensagem_nova)
+        return
+
+    salvar_historico_mob_xp_peace(historico_tentativo)
+    atualizar_painel("mob_xp_peace", "mob_xp_peace", mensagem_tentativa)
+
+
+def monitorar_mob_xp_peace():
+    """Monitora level downs dos membros da Peace Killers a cada ciclo.
+
+    Primeira execução apenas salva a base, sem mandar alerta falso.
+    Depois, se algum membro descer level, adiciona no histórico e edita a
+    mensagem ativa do canal #mob-xp-peace.
+    """
+    _, levels_atuais = pegar_membros_hunted()
+    if not levels_atuais:
+        print("[tracker] nenhum membro da Peace encontrado. Mob XP ignorado.")
+        return
+
+    levels_antigos = carregar_json(ARQUIVO_MOB_XP_PEACE_LEVELS, None)
+
+    if not levels_antigos:
+        print("[tracker] primeira execução do Mob XP Peace. salvando base sem alertas.")
+        salvar_json(ARQUIVO_MOB_XP_PEACE_LEVELS, levels_atuais)
+        return
+
+    downs = []
+    for nome, level in levels_atuais.items():
+        if nome in levels_antigos:
+            antigo = levels_antigos[nome]
+            if level < antigo:
+                downs.append((nome, antigo, level))
+
+    if downs:
+        eventos = criar_eventos_mob_xp_peace(downs)
+        atualizar_painel_mob_xp_peace_com_rotacao(eventos)
+    else:
+        print("[tracker] sem Mob XP Peace detectado.")
+
+    salvar_json(ARQUIVO_MOB_XP_PEACE_LEVELS, levels_atuais)
