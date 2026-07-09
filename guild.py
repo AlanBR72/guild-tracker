@@ -9,6 +9,7 @@ from config import (
     ARQUIVO_ESTADO,
     ARQUIVO_HISTORICO_LEVELS,
     ARQUIVO_HISTORICO_ENTRADA_SAIDA,
+    ARQUIVO_LAST_ONLINE_CACHE,
     ARQUIVO_LEVELS,
     ARQUIVO_MEMBROS,
     ARQUIVO_QUASE_LEVEL,
@@ -79,9 +80,19 @@ def pegar_membros():
 
 
 def last_online_requests(nome):
+    """Retorna (ok, dias).
+
+    ok=True indica que a página foi lida corretamente.
+    dias=0 significa online/agora e não deve entrar em inativos.
+    ok=False indica falha/instabilidade; nesse caso o cálculo usa o cache antigo.
+    """
     try:
         url = CHARACTER_URL.format(nome.replace(" ", "%20"))
         r = session.get(url, timeout=REQUEST_TIMEOUT)
+        if r.status_code != 200:
+            print(f"[guild] erro HTTP {r.status_code} ao pegar last online de {nome}")
+            return False, None
+
         soup = BeautifulSoup(r.text, "html.parser")
         linhas = soup.select("table.character-table tr")
 
@@ -96,27 +107,27 @@ def last_online_requests(nome):
 
             texto = cols[1].get_text(strip=True).lower()
             if "currently online" in texto:
-                return None
+                return True, 0
 
             match = re.search(r"(\d+)", texto)
             if not match:
-                return None
+                return False, None
 
             numero = int(match.group(1))
 
             if "day" in texto:
-                return numero
+                return True, numero
             if "week" in texto:
-                return numero * 7
+                return True, numero * 7
             if "month" in texto:
-                return numero * 30
+                return True, numero * 30
             if "year" in texto:
-                return numero * 365
+                return True, numero * 365
 
-        return None
+        return False, None
     except Exception as e:
         print(f"[guild] erro ao pegar last online de {nome}: {e}")
-        return None
+        return False, None
 
 
 # =========================
@@ -293,6 +304,8 @@ def detectar_quase_levels(levels_atuais):
 def calcular_inativos(membros):
     in20 = []
     in10 = []
+    cache = carregar_json(ARQUIVO_LAST_ONLINE_CACHE, {})
+    novo_cache = dict(cache)
 
     with ThreadPoolExecutor(max_workers=THREADS) as executor:
         futures = {
@@ -302,13 +315,44 @@ def calcular_inativos(membros):
 
         for future in as_completed(futures):
             nome = futures[future]
-            dias = future.result()
+
+            try:
+                ok, dias = future.result()
+            except Exception as e:
+                print(f"[guild] falha inesperada no last online de {nome}: {e}")
+                ok, dias = False, None
+
+            if ok:
+                # Atualiza o cache somente quando a leitura foi confiável.
+                novo_cache[nome] = {
+                    "dias": dias,
+                    "updated_at": data_hora_segundos_brasil(),
+                }
+            else:
+                # Se o site falhar, mantém o último valor conhecido para não ficar
+                # alternando a lista de inativos a cada edição da mensagem.
+                antigo = cache.get(nome, {})
+                dias = antigo.get("dias")
+                if dias is not None:
+                    print(f"[guild] usando cache de last online para {nome}: {dias} dias")
+
             if dias is None:
                 continue
+
+            try:
+                dias = int(dias)
+            except Exception:
+                continue
+
             if dias >= INATIVO_REMOCAO:
                 in20.append((nome, dias))
-            elif dias >= INATIVO_AVISO:
+            elif INATIVO_AVISO <= dias < INATIVO_REMOCAO:
                 in10.append((nome, dias))
+
+    # Remove do cache jogadores que não estão mais na guilda.
+    nomes_atuais = {m["nome"] for m in membros}
+    novo_cache = {nome: dados for nome, dados in novo_cache.items() if nome in nomes_atuais}
+    salvar_json(ARQUIVO_LAST_ONLINE_CACHE, novo_cache)
 
     return in20, in10
 

@@ -4,7 +4,9 @@ from datetime import datetime
 from config import (
     BRASIL,
     HORA_ATUALIZACAO_DIARIA,
-    INTERVALO_MONITOR,
+    INTERVALO_GUILDA,
+    INTERVALO_LOOP,
+    INTERVALO_PEACE,
     MINUTO_ATUALIZACAO_DIARIA,
 )
 from guild import atualizar_visao_geral, monitorar_guilda
@@ -13,18 +15,34 @@ from config import ARQUIVO_ESTADO
 from tracker import atualizar_peace_killers, atualizar_spy_rank, monitorar_mob_xp_peace
 
 
-def executar_monitoramento():
+def executar_monitoramento_guilda():
+    """Monitora a Virtue.
+
+    Roda no intervalo definido por INTERVALO_GUILDA.
+    - #entrada-e-saidas: atualiza o histórico se houver entrada/saída/troca de nick.
+    - #up-levels: atualiza o histórico se houver up/down/quase level.
+    - #visao-geral: edita o painel fixo.
+    """
     try:
-        print("[main] monitoramento rápido iniciado...")
+        print("[main] monitoramento da Virtue iniciado...")
         monitorar_guilda()
-        monitorar_mob_xp_peace()
-
-        # #visao-geral: cria a mensagem na primeira execução
-        # e depois edita a mesma mensagem a cada 10 minutos.
         atualizar_visao_geral()
-
+        print("[main] monitoramento da Virtue finalizado.")
     except Exception as e:
-        print(f"[main] erro no monitoramento: {e}")
+        print(f"[main] erro no monitoramento da Virtue: {e}")
+
+
+def executar_monitoramento_peace():
+    """Monitora Mob XP da Peace Killers.
+
+    Roda no intervalo definido por INTERVALO_PEACE.
+    """
+    try:
+        print("[main] monitoramento Mob XP Peace iniciado...")
+        monitorar_mob_xp_peace()
+        print("[main] monitoramento Mob XP Peace finalizado.")
+    except Exception as e:
+        print(f"[main] erro no monitoramento Mob XP Peace: {e}")
 
 
 def executar_paineis_diarios():
@@ -70,29 +88,47 @@ def deve_atualizar_diario(ultimo_dia):
     return janela and ultimo_dia != agora.date(), agora.date()
 
 
+def segundos_desde(ultimo, agora):
+    if ultimo is None:
+        return None
+    return (agora - ultimo).total_seconds()
+
+
 def main():
     garantir_data_folder()
 
     print("===================================")
     print(" Rucoy Guild Tracker iniciado")
-    print(" Monitoramento: a cada 5 minutos")
+    print(f" Virtue: a cada {INTERVALO_GUILDA // 60} minutos")
+    print(f" Peace Mob XP: a cada {INTERVALO_PEACE // 60} minutos")
     print(" Painéis diários: 03:00 Brasil")
     print("===================================")
 
     ultimo_dia_atualizado = None
+    ultima_guilda = None
+    ultima_peace = None
 
     executar_primeira_mensagem_trackers()
 
     while True:
-        executar_monitoramento()
+        agora = datetime.now(BRASIL)
+
+        # Virtue em intervalo próprio.
+        if ultima_guilda is None or segundos_desde(ultima_guilda, agora) >= INTERVALO_GUILDA:
+            executar_monitoramento_guilda()
+            ultima_guilda = datetime.now(BRASIL)
+
+        # Peace/Mob XP em intervalo próprio.
+        if ultima_peace is None or segundos_desde(ultima_peace, agora) >= INTERVALO_PEACE:
+            executar_monitoramento_peace()
+            ultima_peace = datetime.now(BRASIL)
 
         atualizar, data_atual = deve_atualizar_diario(ultimo_dia_atualizado)
         if atualizar:
             executar_paineis_diarios()
             ultimo_dia_atualizado = data_atual
 
-        print(f"[main] aguardando {INTERVALO_MONITOR} segundos...")
-        time.sleep(INTERVALO_MONITOR)
+        time.sleep(INTERVALO_LOOP)
 
 
 if __name__ == "__main__":
