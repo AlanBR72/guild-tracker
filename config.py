@@ -21,6 +21,7 @@ WEBHOOK_ENTRADA_SAIDA = "https://discord.com/api/webhooks/1481362798326972448/aR
 WEBHOOK_UP_LEVELS = "https://discord.com/api/webhooks/1524443815920799888/kUNlK2oBN8CCqusF9XX4OJRPALOH4ehgbB066kmVONMsv-sW9G2NwaaM_1wYnRv2hyhq"
 WEBHOOK_PEACE_KILLERS = "https://discord.com/api/webhooks/1524443881045757983/rA2XNrujiBnp7lHh54b3MAkTTMesRbuqP9nEO44qjy7WP0e0jt_E8h7Hsu7etw1qiwyc"
 WEBHOOK_MOB_XP_PEACE = "https://discord.com/api/webhooks/1524793800688406642/OucCMAmMXTG-Pr3uWi9UoyS1rCIXiTHMlL4ASGZ199yiQ_ED5H5YP7hJ9bmGPrOlyU3-"
+WEBHOOK_SAIDA_MEMBROS_PEACE = "https://discord.com/api/webhooks/1525161252974760046/pSK7N_O_t75H2lVOKHHsMte2CuHEVRApMFxAggHaUAkeZNPrhglNVjCmbbL5OqZQ1BL6"
 
 # =========================
 # ARQUIVOS
@@ -38,6 +39,8 @@ ARQUIVO_HISTORICO_ENTRADA_SAIDA = f"{DATA_FOLDER}/historico_entrada_saida.json"
 ARQUIVO_LAST_ONLINE_CACHE = f"{DATA_FOLDER}/last_online_cache.json"
 ARQUIVO_MOB_XP_PEACE_LEVELS = f"{DATA_FOLDER}/mob_xp_peace_levels.json"
 ARQUIVO_HISTORICO_MOB_XP_PEACE = f"{DATA_FOLDER}/historico_mob_xp_peace.json"
+ARQUIVO_MEMBROS_PEACE = f"{DATA_FOLDER}/membros_peace.json"
+ARQUIVO_HISTORICO_ENTRADA_SAIDA_PEACE = f"{DATA_FOLDER}/historico_entrada_saida_peace.json"
 
 # =========================
 # TEMPO / EXECUÇÃO

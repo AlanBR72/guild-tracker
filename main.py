@@ -12,7 +12,12 @@ from config import (
 from guild import atualizar_visao_geral, monitorar_guilda
 from storage import garantir_data_folder, carregar_json, salvar_json
 from config import ARQUIVO_ESTADO
-from tracker import atualizar_peace_killers, atualizar_spy_rank, monitorar_mob_xp_peace
+from tracker import (
+    atualizar_peace_killers,
+    atualizar_spy_rank,
+    monitorar_mob_xp_peace,
+    monitorar_movimentacoes_peace,
+)
 
 
 def executar_monitoramento_guilda():
@@ -33,16 +38,17 @@ def executar_monitoramento_guilda():
 
 
 def executar_monitoramento_peace():
-    """Monitora Mob XP da Peace Killers.
+    """Monitora Mob XP e movimentações da Peace Killers.
 
     Roda no intervalo definido por INTERVALO_PEACE.
     """
     try:
-        print("[main] monitoramento Mob XP Peace iniciado...")
+        print("[main] monitoramento da Peace iniciado...")
         monitorar_mob_xp_peace()
-        print("[main] monitoramento Mob XP Peace finalizado.")
+        monitorar_movimentacoes_peace()
+        print("[main] monitoramento da Peace finalizado.")
     except Exception as e:
-        print(f"[main] erro no monitoramento Mob XP Peace: {e}")
+        print(f"[main] erro no monitoramento da Peace: {e}")
 
 
 def executar_paineis_diarios():
@@ -100,7 +106,7 @@ def main():
     print("===================================")
     print(" Rucoy Guild Tracker iniciado")
     print(f" Virtue: a cada {INTERVALO_GUILDA // 60} minutos")
-    print(f" Peace Mob XP: a cada {INTERVALO_PEACE // 60} minutos")
+    print(f" Peace (Mob XP + membros): a cada {INTERVALO_PEACE // 60} minutos")
     print(" Painéis diários: 03:00 Brasil")
     print("===================================")
 

@@ -52,3 +52,7 @@ Os webhooks estão no `config.py`. Depois de testar, é recomendável recriar os
 ## Mob XP Peace
 
 O canal `#mob-xp-peace` monitora a Peace Killers a cada 5 minutos e registra somente membros que descerem de level. A primeira execução salva a base sem enviar alerta falso. Quando o histórico chega perto de 1900 caracteres, o bot cria uma nova mensagem e passa a editar essa nova mensagem.
+
+
+## Novo canal Peace
+- `#saída-membros-peace`: histórico de entradas, saídas e trocas de nick, atualizado a cada 5 minutos.

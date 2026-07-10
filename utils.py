@@ -9,12 +9,12 @@ def agora_brasil():
 
 def data_hora_brasil():
     agora = agora_brasil()
-    return agora.strftime("%d/%m/%Y"), agora.strftime("%H:%M")
+    return agora.strftime("%d/%m/%y"), agora.strftime("%H:%M")
 
 
 def data_hora_segundos_brasil():
     agora = agora_brasil()
-    return agora.strftime("%d/%m/%Y"), agora.strftime("%H:%M"), agora.strftime("%H:%M:%S")
+    return agora.strftime("%d/%m/%y"), agora.strftime("%H:%M"), agora.strftime("%H:%M:%S")
 
 
 def formatar_k(valor: int) -> str:

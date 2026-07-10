@@ -8,6 +8,7 @@ from config import (
     WEBHOOK_SPY_RANK,
     WEBHOOK_UP_LEVELS,
     WEBHOOK_VISAO_GERAL,
+    WEBHOOK_SAIDA_MEMBROS_PEACE,
 )
 from storage import carregar_json, salvar_json
 from config import ARQUIVO_ESTADO
@@ -19,6 +20,7 @@ WEBHOOKS = {
     "up_levels": WEBHOOK_UP_LEVELS,
     "peace_killers": WEBHOOK_PEACE_KILLERS,
     "mob_xp_peace": WEBHOOK_MOB_XP_PEACE,
+    "saida_membros_peace": WEBHOOK_SAIDA_MEMBROS_PEACE,
 }
 
 

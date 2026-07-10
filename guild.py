@@ -410,7 +410,7 @@ def criar_eventos_entrada_saida(entraram, sairam, trocas_nick):
     for p in entraram:
         eventos.append({
             "tipo": "entrada",
-            "timestamp": f"{data} {completo}",
+            "timestamp": f"{data} {hora}",
             "nome": p.get("nome"),
             "level": p.get("level"),
         })
@@ -418,7 +418,7 @@ def criar_eventos_entrada_saida(entraram, sairam, trocas_nick):
     for p in sairam:
         eventos.append({
             "tipo": "saida",
-            "timestamp": f"{data} {completo}",
+            "timestamp": f"{data} {hora}",
             "nome": p.get("nome"),
             "level": p.get("level"),
         })
@@ -426,7 +426,7 @@ def criar_eventos_entrada_saida(entraram, sairam, trocas_nick):
     for p in trocas_nick:
         eventos.append({
             "tipo": "nick",
-            "timestamp": f"{data} {completo}",
+            "timestamp": f"{data} {hora}",
             "antigo": p.get("antigo"),
             "novo": p.get("novo"),
             "level": p.get("level"),
@@ -454,22 +454,22 @@ def gerar_msg_entrada_saida_historico(historico):
             if tipo == "entrada":
                 msg += (
                     f"• `{e.get('timestamp')}` — 🟢 **{e.get('nome')}** "
-                    f"entrou na guilda (Lv {e.get('level')})\n\n"
+                    f"entrou na guilda (Lv {e.get('level')})\n"
                 )
             elif tipo == "saida":
                 msg += (
                     f"• `{e.get('timestamp')}` — 🔴 **{e.get('nome')}** "
-                    f"saiu da guilda (Lv {e.get('level')})\n\n"
+                    f"saiu da guilda (Lv {e.get('level')})\n"
                 )
             elif tipo == "nick":
                 msg += (
                     f"• `{e.get('timestamp')}` — 🔁 **{e.get('antigo')}** "
-                    f"alterou o nick para **{e.get('novo')}** (Lv {e.get('level')})\n\n"
+                    f"alterou o nick para **{e.get('novo')}** (Lv {e.get('level')})\n"
                 )
     else:
         msg += "_Nenhuma entrada ou saída registrada ainda._\n"
 
-    msg += f"_🕒 Atualizado em: {data} • {hora} (Brasil)_"
+    msg += f"\n_🕒 Atualizado em: {data} • {hora} (Brasil)_"
     return msg
 
 
@@ -518,7 +518,7 @@ def criar_eventos_levels(level_ups, level_downs, quase_levels):
             "tipo": "up",
             "data": data,
             "hora": completo,
-            "timestamp": f"{data} {completo}",
+            "timestamp": f"{data} {hora}",
             "nome": nome,
             "antigo": antigo,
             "novo": novo,
@@ -530,7 +530,7 @@ def criar_eventos_levels(level_ups, level_downs, quase_levels):
             "tipo": "down",
             "data": data,
             "hora": completo,
-            "timestamp": f"{data} {completo}",
+            "timestamp": f"{data} {hora}",
             "nome": nome,
             "antigo": antigo,
             "novo": novo,
@@ -542,7 +542,7 @@ def criar_eventos_levels(level_ups, level_downs, quase_levels):
             "tipo": "quase",
             "data": data,
             "hora": completo,
-            "timestamp": f"{data} {completo}",
+            "timestamp": f"{data} {hora}",
             "nome": nome,
             "level": level,
             "alvo": alvo,
@@ -612,7 +612,7 @@ def gerar_msg_up_levels_historico(historico):
             if e.get("tipo") == "up":
                 msg += (
                     f"• `{e.get('timestamp')}` — **{e.get('nome')}** "
-                    f"(Lv {e.get('antigo')} → {e.get('novo')}) 🆙 +{e.get('diff')}\n"
+                    f"(Lv {e.get('antigo')} → {e.get('novo')}) 🔹 +{e.get('diff')}\n"
                 )
             elif e.get("tipo") == "down":
                 msg += (

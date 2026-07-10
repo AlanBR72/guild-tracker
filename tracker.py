@@ -1,9 +1,12 @@
 import requests
+from datetime import datetime
 from bs4 import BeautifulSoup
 
 from config import (
     ARQUIVO_HUNTED,
     ARQUIVO_HISTORICO_MOB_XP_PEACE,
+    ARQUIVO_HISTORICO_ENTRADA_SAIDA_PEACE,
+    ARQUIVO_MEMBROS_PEACE,
     ARQUIVO_MOB_XP_PEACE_LEVELS,
     ARQUIVO_RANK,
     ARQUIVO_RANK_LEVEL,
@@ -12,6 +15,7 @@ from config import (
     HIGHSCORE_MELEE,
     HIGHSCORE_XP,
     HUNTED_URL,
+    BRASIL,
     ARQUIVO_ESTADO,
     DISCORD_LIMITE,
     REQUEST_TIMEOUT,
@@ -234,14 +238,16 @@ def gerar_msg_rank_level():
 # =========================
 # PEACE KILLERS
 # =========================
-def pegar_membros_hunted():
+def pegar_membros_hunted_com_datas():
+    """Retorna nomes, levels e datas de entrada da Peace Killers."""
     r = session.get(HUNTED_URL, timeout=REQUEST_TIMEOUT)
     soup = BeautifulSoup(r.text, "html.parser")
     membros = []
     levels = {}
+    guild_datas = {}
     tabela = soup.select_one("table")
     if not tabela:
-        return membros, levels
+        return membros, levels, guild_datas
 
     for row in tabela.find_all("tr")[1:]:
         cols = row.find_all("td")
@@ -255,41 +261,40 @@ def pegar_membros_hunted():
             level = int(cols[1].get_text(strip=True))
         except Exception:
             continue
+
+        join_iso = None
+        try:
+            join_text = cols[2].get_text(strip=True)
+            join_date = datetime.strptime(join_text, "%b %d, %Y")
+            join_iso = BRASIL.localize(join_date).isoformat()
+        except Exception:
+            pass
+
         membros.append(nome)
         levels[nome] = level
+        guild_datas[nome] = join_iso
 
+    return membros, levels, guild_datas
+
+
+def pegar_membros_hunted():
+    membros, levels, _ = pegar_membros_hunted_com_datas()
     return membros, levels
 
 
 def analisar_hunted():
     membros, levels_atuais = pegar_membros_hunted()
     dados_antigos = carregar_json(ARQUIVO_HUNTED, {"membros": [], "levels": {}})
-    membros_antigos = dados_antigos.get("membros", [])
     levels_antigos = dados_antigos.get("levels", {})
     data, hora = data_hora_brasil()
     momento = f"{data} • {hora}"
 
-    entraram = []
-    sairam = []
-    if membros_antigos:
-        for nome in membros:
-            if nome not in membros_antigos:
-                entraram.append((nome, levels_atuais.get(nome, 0), momento))
-        for nome in membros_antigos:
-            if nome not in membros:
-                sairam.append((nome, levels_antigos.get(nome, 0), momento))
-
     ups = []
-    downs = []
     for nome, level in levels_atuais.items():
         if nome in levels_antigos:
             antigo = levels_antigos[nome]
-            diff = level - antigo
-            if diff > 0:
+            if level > antigo:
                 ups.append((nome, antigo, level, momento))
-            elif diff < 0:
-                # Downs ficam exclusivamente no canal mob xp peace.
-                downs.append((nome, antigo, level, momento))
 
     total = len(levels_atuais)
     media = round(sum(levels_atuais.values()) / total) if total else 0
@@ -298,11 +303,11 @@ def analisar_hunted():
     l800 = sum(1 for l in levels_atuais.values() if l >= 800)
 
     salvar_json(ARQUIVO_HUNTED, {"membros": membros, "levels": levels_atuais})
-    return total, media, l600, l700, l800, entraram, sairam, ups
+    return total, media, l600, l700, l800, ups
 
 
 def gerar_msg_hunted():
-    total, media, l600, l700, l800, entraram, sairam, ups = analisar_hunted()
+    total, media, l600, l700, l800, ups = analisar_hunted()
     data, hora = data_hora_brasil()
     msg = f"_🕒 Atualizado em: {data} • {hora}_\n\n"
     msg += "🎯 **RELATÓRIO — PEACE KILLERS (HUNTED)** 🎯\n\n"
@@ -312,16 +317,11 @@ def gerar_msg_hunted():
     msg += f"_Level 800+ ➤ {l800} membros_\n"
     msg += f"_Level 700+ ➤ {l700} membros_\n"
     msg += f"_Level 600+ ➤ {l600} membros_\n\n"
-
-    msg += "📥 **Entraram**\n"
-    msg += "\n".join(f"_**{n}** ➤ lvl {lvl} • {momento}_" for n, lvl, momento in entraram) if entraram else "_Nenhum_"
-
-    msg += "\n\n📤 **Saíram**\n"
-    msg += "\n".join(f"_**{n}** ➤ lvl {lvl} • {momento}_" for n, lvl, momento in sairam) if sairam else "_Nenhum_"
-
-    msg += "\n\n📈 **Ups de level**\n"
-    msg += "\n".join(f"_**{n}** ➤ {a} → {b} (+{b-a}) • {momento}_" for n, a, b, momento in ups) if ups else "_Nenhum_"
-
+    msg += "📈 **Ups de level**\n"
+    msg += "\n".join(
+        f"_**{n}** ➤ {a} → {b} (+{b-a}) • {momento}_"
+        for n, a, b, momento in ups
+    ) if ups else "_Nenhum_"
     return msg
 
 
@@ -347,6 +347,190 @@ def atualizar_peace_killers():
     Não edita mensagem antiga.
     """
     enviar_em_partes("peace_killers", gerar_msg_hunted())
+
+
+# =========================
+# ENTRADAS / SAÍDAS PEACE KILLERS
+# =========================
+def normalizar_membros_peace(dados):
+    if not dados:
+        return {}
+    if isinstance(dados, list):
+        return {nome: {"level": "?", "join": None} for nome in dados}
+    normalizado = {}
+    if isinstance(dados, dict):
+        for nome, valor in dados.items():
+            if isinstance(valor, dict):
+                normalizado[nome] = {
+                    "level": valor.get("level", "?"),
+                    "join": valor.get("join"),
+                }
+            else:
+                normalizado[nome] = {"level": valor, "join": None}
+    return normalizado
+
+
+def separar_trocas_nick_peace(entraram, sairam):
+    trocas = []
+    entradas_restantes = list(entraram)
+    saidas_restantes = []
+
+    for saiu in sairam:
+        candidatos = []
+        for entrou in entradas_restantes:
+            if entrou.get("level") != saiu.get("level"):
+                continue
+            join_saiu = saiu.get("join")
+            join_entrou = entrou.get("join")
+            if join_saiu and join_entrou and join_saiu == join_entrou:
+                candidatos.append(entrou)
+            elif not join_saiu:
+                candidatos.append(entrou)
+
+        if len(candidatos) == 1:
+            entrou = candidatos[0]
+            trocas.append({
+                "antigo": saiu.get("nome"),
+                "novo": entrou.get("nome"),
+                "level": entrou.get("level"),
+            })
+            entradas_restantes.remove(entrou)
+        else:
+            saidas_restantes.append(saiu)
+
+    return entradas_restantes, saidas_restantes, trocas
+
+
+def criar_eventos_entrada_saida_peace(entraram, sairam, trocas):
+    data, hora = data_hora_brasil()
+    timestamp = f"{data} {hora}"
+    eventos = []
+
+    for p in entraram:
+        eventos.append({
+            "tipo": "entrada", "timestamp": timestamp,
+            "nome": p.get("nome"), "level": p.get("level"),
+        })
+    for p in sairam:
+        eventos.append({
+            "tipo": "saida", "timestamp": timestamp,
+            "nome": p.get("nome"), "level": p.get("level"),
+        })
+    for p in trocas:
+        eventos.append({
+            "tipo": "nick", "timestamp": timestamp,
+            "antigo": p.get("antigo"), "novo": p.get("novo"),
+            "level": p.get("level"),
+        })
+    return eventos
+
+
+def carregar_historico_entrada_saida_peace():
+    historico = carregar_json(ARQUIVO_HISTORICO_ENTRADA_SAIDA_PEACE, [])
+    return historico if isinstance(historico, list) else []
+
+
+def gerar_msg_entrada_saida_peace_historico(historico):
+    data, hora = data_hora_brasil()
+    msg = "📋 **Histórico de Entradas e Saídas (Peace Killers):**\n\n"
+
+    if historico:
+        for evento in historico:
+            tipo = evento.get("tipo")
+            if tipo == "entrada":
+                msg += (
+                    f"• `{evento.get('timestamp')}` — 🟢 **{evento.get('nome')}** "
+                    f"entrou na guilda (Lv {evento.get('level')})\n"
+                )
+            elif tipo == "saida":
+                msg += (
+                    f"• `{evento.get('timestamp')}` — 🔴 **{evento.get('nome')}** "
+                    f"saiu da guilda (Lv {evento.get('level')})\n"
+                )
+            elif tipo == "nick":
+                msg += (
+                    f"• `{evento.get('timestamp')}` — 🔁 **{evento.get('antigo')}** "
+                    f"alterou o nick para **{evento.get('novo')}** "
+                    f"(Lv {evento.get('level')})\n"
+                )
+    else:
+        msg += "_Nenhuma entrada ou saída registrada ainda._\n"
+
+    msg += f"\n_🕒 Atualizado em: {data} • {hora} (Brasil)_"
+    return msg
+
+
+def criar_novo_painel_entrada_saida_peace(mensagem):
+    estado = carregar_json(ARQUIVO_ESTADO, {})
+    novo_id = enviar("saida_membros_peace", mensagem)
+    if novo_id:
+        estado["saida_membros_peace"] = novo_id
+        salvar_json(ARQUIVO_ESTADO, estado)
+    return novo_id
+
+
+def atualizar_painel_entrada_saida_peace_com_rotacao(eventos):
+    historico_atual = carregar_historico_entrada_saida_peace()
+    historico_tentativo = historico_atual + eventos
+    mensagem_tentativa = gerar_msg_entrada_saida_peace_historico(historico_tentativo)
+
+    if len(mensagem_tentativa) >= DISCORD_LIMITE:
+        print("[tracker] histórico de membros Peace perto do limite. criando nova mensagem.")
+        historico_novo = eventos
+        salvar_json(ARQUIVO_HISTORICO_ENTRADA_SAIDA_PEACE, historico_novo)
+        criar_novo_painel_entrada_saida_peace(
+            gerar_msg_entrada_saida_peace_historico(historico_novo)
+        )
+        return
+
+    salvar_json(ARQUIVO_HISTORICO_ENTRADA_SAIDA_PEACE, historico_tentativo)
+    atualizar_painel(
+        "saida_membros_peace",
+        "saida_membros_peace",
+        mensagem_tentativa,
+    )
+
+
+def monitorar_movimentacoes_peace():
+    """Monitora entradas, saídas e trocas de nick da Peace a cada 5 minutos."""
+    membros, levels, guild_datas = pegar_membros_hunted_com_datas()
+    if not levels:
+        print("[tracker] nenhum membro da Peace encontrado. movimentações ignoradas.")
+        return
+
+    atuais = {
+        nome: {"level": levels[nome], "join": guild_datas.get(nome)}
+        for nome in membros
+    }
+    antigos = normalizar_membros_peace(carregar_json(ARQUIVO_MEMBROS_PEACE, {}))
+
+    if not antigos:
+        print("[tracker] primeira execução das movimentações Peace. salvando base sem alertas.")
+        salvar_json(ARQUIVO_MEMBROS_PEACE, atuais)
+        return
+
+    entraram = [
+        {"nome": nome, "level": dados.get("level"), "join": dados.get("join")}
+        for nome, dados in atuais.items() if nome not in antigos
+    ]
+    sairam = [
+        {"nome": nome, "level": dados.get("level"), "join": dados.get("join")}
+        for nome, dados in antigos.items() if nome not in atuais
+    ]
+
+    if entraram or sairam:
+        entradas_restantes, saidas_restantes, trocas = separar_trocas_nick_peace(
+            entraram, sairam
+        )
+        eventos = criar_eventos_entrada_saida_peace(
+            entradas_restantes, saidas_restantes, trocas
+        )
+        if eventos:
+            atualizar_painel_entrada_saida_peace_com_rotacao(eventos)
+    else:
+        print("[tracker] sem entradas/saídas na Peace.")
+
+    salvar_json(ARQUIVO_MEMBROS_PEACE, atuais)
 
 
 # =========================
