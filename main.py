@@ -4,6 +4,7 @@ from datetime import datetime
 from config import (
     ARQUIVO_ESTADO,
     BRASIL,
+    GUILDAS_HUNTED,
     HORA_ATUALIZACAO_DIARIA,
     INTERVALO_GUILDA,
     INTERVALO_HUNTED,
@@ -82,12 +83,13 @@ def main():
     print(" Rucoy Guild Tracker iniciado")
     print(f" Virtue: a cada {INTERVALO_GUILDA // 60} minutos")
     print(f" Guildas hunted: a cada {INTERVALO_HUNTED // 60} minutos")
+    print(f" Hunted configuradas: {', '.join(GUILDAS_HUNTED.keys())}")
     print(" Painéis diários: 03:00 Brasil")
     print("===================================")
 
     ultimo_dia_atualizado = None
     ultima_guilda = None
-    ultimo_hunted = None
+    ultima_hunted = None
 
     executar_primeira_mensagem_trackers()
 
@@ -98,9 +100,9 @@ def main():
             executar_monitoramento_guilda()
             ultima_guilda = datetime.now(BRASIL)
 
-        if ultimo_hunted is None or segundos_desde(ultimo_hunted, agora) >= INTERVALO_HUNTED:
+        if ultima_hunted is None or segundos_desde(ultima_hunted, agora) >= INTERVALO_HUNTED:
             executar_monitoramento_hunted()
-            ultimo_hunted = datetime.now(BRASIL)
+            ultima_hunted = datetime.now(BRASIL)
 
         atualizar, data_atual = deve_atualizar_diario(ultimo_dia_atualizado)
         if atualizar:

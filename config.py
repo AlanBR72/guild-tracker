@@ -86,3 +86,11 @@ INATIVO_AVISO = 10
 INATIVO_REMOCAO = 20
 HISTORICO_LEVELS_MAX = 60
 TAGS_VALIDAS = ["virtue", "culpa", "pravus"]
+
+# =========================
+# ALIASES DE COMPATIBILIDADE
+# =========================
+# Mantêm compatibilidade com versões anteriores dos módulos.
+WEBHOOK_SAIDA_MEMBROS_HUNTED = WEBHOOK_SAIDA_MEMBROS
+WEBHOOK_MOB_XP_HUNTED = WEBHOOK_MOB_XP
+WEBHOOK_SPY_INFO_HUNTED = WEBHOOK_SPY_INFO

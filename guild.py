@@ -469,7 +469,7 @@ def gerar_msg_entrada_saida_historico(historico):
     else:
         msg += "_Nenhuma entrada ou saída registrada ainda._\n"
 
-    msg += f"_🕒 Atualizado em: {data} • {hora} (Brasil)_"
+    msg += f"\n_🕒 Atualizado em: {data} • {hora} (Brasil)_"
     return msg
 
 

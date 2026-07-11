@@ -5,7 +5,7 @@ from config import (
     DISCORD_LIMITE,
     WEBHOOK_ENTRADA_SAIDA,
     WEBHOOK_MOB_XP,
-    WEBHOOK_SAIDA_MEMBROS_HUNTED,
+    WEBHOOK_SAIDA_MEMBROS,
     WEBHOOK_SPY_INFO,
     WEBHOOK_SPY_RANK,
     WEBHOOK_UP_LEVELS,
@@ -20,7 +20,7 @@ WEBHOOKS = {
     "up_levels": WEBHOOK_UP_LEVELS,
     "spy_info": WEBHOOK_SPY_INFO,
     "mob_xp": WEBHOOK_MOB_XP,
-    "saida_membros_hunted": WEBHOOK_SAIDA_MEMBROS_HUNTED,
+    "saida_membros": WEBHOOK_SAIDA_MEMBROS,
 }
 
 
@@ -40,9 +40,14 @@ def enviar(canal: str, mensagem: str):
 def editar(canal: str, msg_id: str, mensagem: str):
     if not msg_id:
         return enviar(canal, mensagem)
+
     webhook = WEBHOOKS[canal]
     try:
-        r = requests.patch(f"{webhook}/messages/{msg_id}", json={"content": mensagem}, timeout=20)
+        r = requests.patch(
+            f"{webhook}/messages/{msg_id}",
+            json={"content": mensagem},
+            timeout=20,
+        )
         if r.status_code in (200, 204):
             print(f"[discord] mensagem atualizada em {canal}")
             return msg_id
