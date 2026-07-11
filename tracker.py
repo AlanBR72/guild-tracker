@@ -1,27 +1,21 @@
 import requests
-from datetime import datetime
 from bs4 import BeautifulSoup
 
 from config import (
-    ARQUIVO_HUNTED,
-    ARQUIVO_HISTORICO_MOB_XP_PEACE,
-    ARQUIVO_HISTORICO_ENTRADA_SAIDA_PEACE,
-    ARQUIVO_MEMBROS_PEACE,
-    ARQUIVO_MOB_XP_PEACE_LEVELS,
     ARQUIVO_RANK,
     ARQUIVO_RANK_LEVEL,
     HIGHSCORE_DISTANCE,
     HIGHSCORE_MAGIC,
     HIGHSCORE_MELEE,
     HIGHSCORE_XP,
-    HUNTED_URL,
-    BRASIL,
+    GUILDAS_HUNTED,
     ARQUIVO_ESTADO,
+    DATA_FOLDER,
     DISCORD_LIMITE,
     REQUEST_TIMEOUT,
     USER_AGENT,
 )
-from discord_utils import atualizar_painel, enviar, enviar_em_partes
+from discord_utils import atualizar_painel, editar, enviar, enviar_em_partes
 from storage import carregar_json, salvar_json
 from utils import data_hora_brasil, data_hora_segundos_brasil, detectar_classe
 
@@ -236,18 +230,26 @@ def gerar_msg_rank_level():
 
 
 # =========================
-# PEACE KILLERS
+# GUILDAS HUNTED (CONFIGURÁVEIS)
 # =========================
-def pegar_membros_hunted_com_datas():
-    """Retorna nomes, levels e datas de entrada da Peace Killers."""
-    r = session.get(HUNTED_URL, timeout=REQUEST_TIMEOUT)
-    soup = BeautifulSoup(r.text, "html.parser")
+def caminho_hunted(chave: str, sufixo: str) -> str:
+    return f"{DATA_FOLDER}/hunted_{chave}_{sufixo}.json"
+
+
+def pegar_membros_hunted(config_guilda):
+    """Retorna membros, levels e data de entrada da guilda configurada."""
+    try:
+        soup = soup_get(config_guilda["url"])
+    except Exception as e:
+        print(f"[tracker] erro ao abrir {config_guilda['nome']}: {e}")
+        return [], {}, {}
+
     membros = []
     levels = {}
-    guild_datas = {}
+    joins = {}
     tabela = soup.select_one("table")
     if not tabela:
-        return membros, levels, guild_datas
+        return membros, levels, joins
 
     for row in tabela.find_all("tr")[1:]:
         cols = row.find_all("td")
@@ -261,390 +263,286 @@ def pegar_membros_hunted_com_datas():
             level = int(cols[1].get_text(strip=True))
         except Exception:
             continue
-
-        join_iso = None
-        try:
-            join_text = cols[2].get_text(strip=True)
-            join_date = datetime.strptime(join_text, "%b %d, %Y")
-            join_iso = BRASIL.localize(join_date).isoformat()
-        except Exception:
-            pass
-
+        join_text = cols[2].get_text(" ", strip=True)
         membros.append(nome)
         levels[nome] = level
-        guild_datas[nome] = join_iso
+        joins[nome] = join_text
 
-    return membros, levels, guild_datas
-
-
-def pegar_membros_hunted():
-    membros, levels, _ = pegar_membros_hunted_com_datas()
-    return membros, levels
+    return membros, levels, joins
 
 
-def analisar_hunted():
-    membros, levels_atuais = pegar_membros_hunted()
-    dados_antigos = carregar_json(ARQUIVO_HUNTED, {"membros": [], "levels": {}})
-    levels_antigos = dados_antigos.get("levels", {})
-    data, hora = data_hora_brasil()
-    momento = f"{data} • {hora}"
+def detectar_trocas_nick(entraram, sairam):
+    """Pareia troca de nick por mesmo level e mesma data de entrada.
 
-    ups = []
-    for nome, level in levels_atuais.items():
-        if nome in levels_antigos:
-            antigo = levels_antigos[nome]
-            if level > antigo:
-                ups.append((nome, antigo, level, momento))
-
-    total = len(levels_atuais)
-    media = round(sum(levels_atuais.values()) / total) if total else 0
-    l600 = sum(1 for l in levels_atuais.values() if l >= 600)
-    l700 = sum(1 for l in levels_atuais.values() if l >= 700)
-    l800 = sum(1 for l in levels_atuais.values() if l >= 800)
-
-    salvar_json(ARQUIVO_HUNTED, {"membros": membros, "levels": levels_atuais})
-    return total, media, l600, l700, l800, ups
-
-
-def gerar_msg_hunted():
-    total, media, l600, l700, l800, ups = analisar_hunted()
-    data, hora = data_hora_brasil()
-    msg = f"_🕒 Atualizado em: {data} • {hora}_\n\n"
-    msg += "🎯 **RELATÓRIO — PEACE KILLERS (HUNTED)** 🎯\n\n"
-    msg += f"👥 **Membros:** {total}\n"
-    msg += f"⚔️ **Média de level:** {media}\n\n"
-    msg += "📊 **Distribuição de levels**\n"
-    msg += f"_Level 800+ ➤ {l800} membros_\n"
-    msg += f"_Level 700+ ➤ {l700} membros_\n"
-    msg += f"_Level 600+ ➤ {l600} membros_\n\n"
-    msg += "📈 **Ups de level**\n"
-    msg += "\n".join(
-        f"_**{n}** ➤ {a} → {b} (+{b-a}) • {momento}_"
-        for n, a, b, momento in ups
-    ) if ups else "_Nenhum_"
-    return msg
-
-
-# =========================
-# FUNÇÕES PÚBLICAS
-# =========================
-def atualizar_spy_rank():
-    """Envia uma NOVA mensagem no canal #spy-rank.
-
-    Usado na primeira execução e depois todos os dias às 03:00.
-    Não edita mensagem antiga.
+    Se a data não estiver disponível, não força o pareamento para evitar
+    confundir duas pessoas diferentes com o mesmo level.
     """
-    msg = gerar_msg_rank_mage()
-    msg += "\n\n━━━━━━━━━━━━━━━━━━━━━━\n\n"
-    msg += gerar_msg_rank_level()
-    enviar_em_partes("spy_rank", msg)
-
-
-def atualizar_peace_killers():
-    """Envia uma NOVA mensagem no canal #peace-killers.
-
-    Usado na primeira execução e depois todos os dias às 03:00.
-    Não edita mensagem antiga.
-    """
-    enviar_em_partes("peace_killers", gerar_msg_hunted())
-
-
-# =========================
-# ENTRADAS / SAÍDAS PEACE KILLERS
-# =========================
-def normalizar_membros_peace(dados):
-    if not dados:
-        return {}
-    if isinstance(dados, list):
-        return {nome: {"level": "?", "join": None} for nome in dados}
-    normalizado = {}
-    if isinstance(dados, dict):
-        for nome, valor in dados.items():
-            if isinstance(valor, dict):
-                normalizado[nome] = {
-                    "level": valor.get("level", "?"),
-                    "join": valor.get("join"),
-                }
-            else:
-                normalizado[nome] = {"level": valor, "join": None}
-    return normalizado
-
-
-def separar_trocas_nick_peace(entraram, sairam):
     trocas = []
-    entradas_restantes = list(entraram)
-    saidas_restantes = []
+    entradas_usadas = set()
+    saidas_usadas = set()
 
-    for saiu in sairam:
+    for i, saida in enumerate(sairam):
         candidatos = []
-        for entrou in entradas_restantes:
-            if entrou.get("level") != saiu.get("level"):
+        for j, entrada in enumerate(entraram):
+            if j in entradas_usadas:
                 continue
-            join_saiu = saiu.get("join")
-            join_entrou = entrou.get("join")
-            if join_saiu and join_entrou and join_saiu == join_entrou:
-                candidatos.append(entrou)
-            elif not join_saiu:
-                candidatos.append(entrou)
-
+            if saida[1] == entrada[1] and saida[2] and saida[2] == entrada[2]:
+                candidatos.append(j)
         if len(candidatos) == 1:
-            entrou = candidatos[0]
+            j = candidatos[0]
+            entrada = entraram[j]
             trocas.append({
-                "antigo": saiu.get("nome"),
-                "novo": entrou.get("nome"),
-                "level": entrou.get("level"),
+                "antigo": saida[0],
+                "novo": entrada[0],
+                "level": entrada[1],
             })
-            entradas_restantes.remove(entrou)
-        else:
-            saidas_restantes.append(saiu)
+            saidas_usadas.add(i)
+            entradas_usadas.add(j)
 
+    entradas_restantes = [e for i, e in enumerate(entraram) if i not in entradas_usadas]
+    saidas_restantes = [s for i, s in enumerate(sairam) if i not in saidas_usadas]
     return entradas_restantes, saidas_restantes, trocas
 
 
-def criar_eventos_entrada_saida_peace(entraram, sairam, trocas):
-    data, hora = data_hora_brasil()
-    timestamp = f"{data} {hora}"
-    eventos = []
+def analisar_guilda_hunted(chave, config_guilda, salvar_estado=True):
+    membros, levels, joins = pegar_membros_hunted(config_guilda)
+    if not levels:
+        return None
 
-    for p in entraram:
-        eventos.append({
-            "tipo": "entrada", "timestamp": timestamp,
-            "nome": p.get("nome"), "level": p.get("level"),
-        })
-    for p in sairam:
-        eventos.append({
-            "tipo": "saida", "timestamp": timestamp,
-            "nome": p.get("nome"), "level": p.get("level"),
-        })
-    for p in trocas:
-        eventos.append({
-            "tipo": "nick", "timestamp": timestamp,
-            "antigo": p.get("antigo"), "novo": p.get("novo"),
-            "level": p.get("level"),
-        })
+    arquivo = caminho_hunted(chave, "estado")
+    antigo = carregar_json(arquivo, None)
+    primeira = not antigo
+    antigo = antigo or {"membros": [], "levels": {}, "joins": {}}
+
+    membros_antigos = antigo.get("membros", [])
+    levels_antigos = antigo.get("levels", {})
+    joins_antigos = antigo.get("joins", {})
+
+    entraram = [
+        (nome, levels.get(nome, 0), joins.get(nome, ""))
+        for nome in membros if nome not in membros_antigos
+    ]
+    sairam = [
+        (nome, levels_antigos.get(nome, 0), joins_antigos.get(nome, ""))
+        for nome in membros_antigos if nome not in membros
+    ]
+    entraram, sairam, trocas = detectar_trocas_nick(entraram, sairam)
+
+    ups = []
+    downs = []
+    for nome, level in levels.items():
+        if nome not in levels_antigos:
+            continue
+        anterior = levels_antigos[nome]
+        if level > anterior:
+            ups.append((nome, anterior, level))
+        elif level < anterior:
+            downs.append((nome, anterior, level))
+
+    total = len(levels)
+    resultado = {
+        "primeira": primeira,
+        "membros": membros,
+        "levels": levels,
+        "joins": joins,
+        "entraram": entraram,
+        "sairam": sairam,
+        "trocas": trocas,
+        "ups": ups,
+        "downs": downs,
+        "total": total,
+        "media": round(sum(levels.values()) / total) if total else 0,
+        "l600": sum(1 for x in levels.values() if x >= 600),
+        "l700": sum(1 for x in levels.values() if x >= 700),
+        "l800": sum(1 for x in levels.values() if x >= 800),
+    }
+
+    if salvar_estado:
+        salvar_json(arquivo, {"membros": membros, "levels": levels, "joins": joins})
+    return resultado
+
+
+# =========================
+# SPY INFO DIÁRIO
+# =========================
+def gerar_msg_spy_info():
+    data, hora = data_hora_brasil()
+    blocos = ["🎯 **RELATÓRIO — GUILDAS HUNTED** 🎯"]
+
+    for chave, cfg in GUILDAS_HUNTED.items():
+        dados = analisar_guilda_hunted(chave, cfg, salvar_estado=False)
+        if not dados:
+            blocos.append(f"🔥 **{cfg['nome'].upper()}**\n_Erro ao carregar guilda._")
+            continue
+        bloco = [
+            f"🔥 **{cfg['nome'].upper()}**",
+            "",
+            f"👥 **Membros:** {dados['total']}",
+            f"⚔️ **Média de level:** {dados['media']}",
+            "",
+            "📊 **Distribuição de levels**",
+            f"_Level 800+ ➤ {dados['l800']} membros_",
+            f"_Level 700+ ➤ {dados['l700']} membros_",
+            f"_Level 600+ ➤ {dados['l600']} membros_",
+        ]
+        blocos.append("\n".join(bloco))
+
+    return "\n\n━━━━━━━━━━━━━━━━━━━━━━\n\n".join(blocos) + f"\n\n_🕒 Atualizado em: {data} • {hora} (Brasil)_"
+
+
+def atualizar_spy_info():
+    enviar_em_partes("spy_info", gerar_msg_spy_info())
+
+
+# =========================
+# HISTÓRICOS SEPARADOS POR GUILDA
+# =========================
+def carregar_historico(chave, tipo):
+    dado = carregar_json(caminho_hunted(chave, f"historico_{tipo}"), [])
+    return dado if isinstance(dado, list) else []
+
+
+def salvar_historico(chave, tipo, historico):
+    salvar_json(caminho_hunted(chave, f"historico_{tipo}"), historico)
+
+
+def timestamp_agora():
+    data, hora = data_hora_brasil()
+    return f"{data} {hora}"
+
+
+def gerar_msg_mob_xp(nome_guilda, historico):
+    data, hora = data_hora_brasil()
+    msg = f"📉 **Histórico de Mob XP — {nome_guilda}:**\n\n"
+    if historico:
+        for e in historico:
+            msg += (
+                f"• `{e['timestamp']}` — **{e['nome']}** "
+                f"(Lv {e['antigo']} → {e['novo']}) 🔻 -{e['diff']}\n"
+            )
+    else:
+        msg += "_Nenhum mob XP registrado ainda._\n"
+    return msg + f"\n_🕒 Atualizado em: {data} • {hora} (Brasil)_"
+
+
+def gerar_msg_movimentacoes(nome_guilda, historico):
+    data, hora = data_hora_brasil()
+    msg = f"📋 **Histórico de Entradas e Saídas — {nome_guilda}:**\n\n"
+    if historico:
+        for e in historico:
+            if e["tipo"] == "entrada":
+                msg += f"• `{e['timestamp']}` — 🟢 **{e['nome']}** entrou na guilda (Lv {e['level']})\n"
+            elif e["tipo"] == "saida":
+                msg += f"• `{e['timestamp']}` — 🔴 **{e['nome']}** saiu da guilda (Lv {e['level']})\n"
+            else:
+                msg += (
+                    f"• `{e['timestamp']}` — 🔁 **{e['antigo']}** alterou o nick para "
+                    f"**{e['novo']}** (Lv {e['level']})\n"
+                )
+    else:
+        msg += "_Nenhuma movimentação registrada ainda._\n"
+    return msg + f"\n_🕒 Atualizado em: {data} • {hora} (Brasil)_"
+
+
+def atualizar_historico_com_rotacao(canal, estado_key, chave, tipo, nome_guilda, eventos, gerador):
+    historico = carregar_historico(chave, tipo)
+    tentativo = historico + eventos
+    mensagem = gerador(nome_guilda, tentativo)
+
+    if len(mensagem) >= DISCORD_LIMITE:
+        aviso = (
+            f"⚠️ **O histórico de {nome_guilda} chegou ao limite de caracteres.**\n"
+            "Uma nova lista será iniciada abaixo."
+        )
+        enviar(canal, aviso)
+        novo_historico = eventos
+        nova_msg = gerador(nome_guilda, novo_historico)
+        novo_id = enviar(canal, nova_msg)
+        if novo_id:
+            estado = carregar_json(ARQUIVO_ESTADO, {})
+            estado[estado_key] = novo_id
+            salvar_json(ARQUIVO_ESTADO, estado)
+            salvar_historico(chave, tipo, novo_historico)
+        return
+
+    salvar_historico(chave, tipo, tentativo)
+    atualizar_painel(canal, estado_key, mensagem)
+
+
+def criar_eventos_movimentacoes(dados):
+    ts = timestamp_agora()
+    eventos = []
+    for nome, level, _join in dados["entraram"]:
+        eventos.append({"tipo": "entrada", "timestamp": ts, "nome": nome, "level": level})
+    for nome, level, _join in dados["sairam"]:
+        eventos.append({"tipo": "saida", "timestamp": ts, "nome": nome, "level": level})
+    for troca in dados["trocas"]:
+        eventos.append({"tipo": "nick", "timestamp": ts, **troca})
     return eventos
 
 
-def carregar_historico_entrada_saida_peace():
-    historico = carregar_json(ARQUIVO_HISTORICO_ENTRADA_SAIDA_PEACE, [])
-    return historico if isinstance(historico, list) else []
-
-
-def gerar_msg_entrada_saida_peace_historico(historico):
-    data, hora = data_hora_brasil()
-    msg = "📋 **Histórico de Entradas e Saídas (Peace Killers):**\n\n"
-
-    if historico:
-        for evento in historico:
-            tipo = evento.get("tipo")
-            if tipo == "entrada":
-                msg += (
-                    f"• `{evento.get('timestamp')}` — 🟢 **{evento.get('nome')}** "
-                    f"entrou na guilda (Lv {evento.get('level')})\n"
-                )
-            elif tipo == "saida":
-                msg += (
-                    f"• `{evento.get('timestamp')}` — 🔴 **{evento.get('nome')}** "
-                    f"saiu da guilda (Lv {evento.get('level')})\n"
-                )
-            elif tipo == "nick":
-                msg += (
-                    f"• `{evento.get('timestamp')}` — 🔁 **{evento.get('antigo')}** "
-                    f"alterou o nick para **{evento.get('novo')}** "
-                    f"(Lv {evento.get('level')})\n"
-                )
-    else:
-        msg += "_Nenhuma entrada ou saída registrada ainda._\n"
-
-    msg += f"\n_🕒 Atualizado em: {data} • {hora} (Brasil)_"
-    return msg
-
-
-def criar_novo_painel_entrada_saida_peace(mensagem):
-    estado = carregar_json(ARQUIVO_ESTADO, {})
-    novo_id = enviar("saida_membros_peace", mensagem)
-    if novo_id:
-        estado["saida_membros_peace"] = novo_id
-        salvar_json(ARQUIVO_ESTADO, estado)
-    return novo_id
-
-
-def atualizar_painel_entrada_saida_peace_com_rotacao(eventos):
-    historico_atual = carregar_historico_entrada_saida_peace()
-    historico_tentativo = historico_atual + eventos
-    mensagem_tentativa = gerar_msg_entrada_saida_peace_historico(historico_tentativo)
-
-    if len(mensagem_tentativa) >= DISCORD_LIMITE:
-        print("[tracker] histórico de membros Peace perto do limite. criando nova mensagem.")
-        historico_novo = eventos
-        salvar_json(ARQUIVO_HISTORICO_ENTRADA_SAIDA_PEACE, historico_novo)
-        criar_novo_painel_entrada_saida_peace(
-            gerar_msg_entrada_saida_peace_historico(historico_novo)
-        )
-        return
-
-    salvar_json(ARQUIVO_HISTORICO_ENTRADA_SAIDA_PEACE, historico_tentativo)
-    atualizar_painel(
-        "saida_membros_peace",
-        "saida_membros_peace",
-        mensagem_tentativa,
-    )
-
-
-def monitorar_movimentacoes_peace():
-    """Monitora entradas, saídas e trocas de nick da Peace a cada 5 minutos."""
-    membros, levels, guild_datas = pegar_membros_hunted_com_datas()
-    if not levels:
-        print("[tracker] nenhum membro da Peace encontrado. movimentações ignoradas.")
-        return
-
-    atuais = {
-        nome: {"level": levels[nome], "join": guild_datas.get(nome)}
-        for nome in membros
-    }
-    antigos = normalizar_membros_peace(carregar_json(ARQUIVO_MEMBROS_PEACE, {}))
-
-    if not antigos:
-        print("[tracker] primeira execução das movimentações Peace. salvando base sem alertas.")
-        salvar_json(ARQUIVO_MEMBROS_PEACE, atuais)
-        return
-
-    entraram = [
-        {"nome": nome, "level": dados.get("level"), "join": dados.get("join")}
-        for nome, dados in atuais.items() if nome not in antigos
-    ]
-    sairam = [
-        {"nome": nome, "level": dados.get("level"), "join": dados.get("join")}
-        for nome, dados in antigos.items() if nome not in atuais
-    ]
-
-    if entraram or sairam:
-        entradas_restantes, saidas_restantes, trocas = separar_trocas_nick_peace(
-            entraram, sairam
-        )
-        eventos = criar_eventos_entrada_saida_peace(
-            entradas_restantes, saidas_restantes, trocas
-        )
-        if eventos:
-            atualizar_painel_entrada_saida_peace_com_rotacao(eventos)
-    else:
-        print("[tracker] sem entradas/saídas na Peace.")
-
-    salvar_json(ARQUIVO_MEMBROS_PEACE, atuais)
-
-
-# =========================
-# MOB XP PEACE KILLERS
-# =========================
-def criar_eventos_mob_xp_peace(level_downs):
-    """Cria eventos de level down da Peace Killers em ordem cronológica."""
-    data, hora = data_hora_segundos_brasil()
-    eventos = []
-
-    for nome, antigo, novo in level_downs:
-        eventos.append({
-            "data": data,
-            "hora": hora,
-            "timestamp": f"{data} {hora}",
+def criar_eventos_mob_xp(dados):
+    ts = timestamp_agora()
+    return [
+        {
+            "timestamp": ts,
             "nome": nome,
             "antigo": antigo,
             "novo": novo,
             "diff": antigo - novo,
-        })
-
-    return eventos
-
-
-def carregar_historico_mob_xp_peace():
-    historico = carregar_json(ARQUIVO_HISTORICO_MOB_XP_PEACE, [])
-    return historico if isinstance(historico, list) else []
+        }
+        for nome, antigo, novo in dados["downs"]
+    ]
 
 
-def salvar_historico_mob_xp_peace(historico):
-    salvar_json(ARQUIVO_HISTORICO_MOB_XP_PEACE, historico)
+def monitorar_guildas_hunted():
+    """Monitora todas as guildas em GUILDAS_HUNTED a cada 5 minutos.
 
-
-def gerar_msg_mob_xp_peace_historico(historico):
-    data, hora = data_hora_brasil()
-
-    msg = "📉 **Histórico de Mob XP (Peace Killers):**\n\n"
-    msg += f"📊 **Total de Mob XP registrados:** {len(historico)}\n\n"
-
-    if historico:
-        for e in historico:
-            msg += (
-                f"• `{e.get('timestamp')}` — **{e.get('nome')}** "
-                f"(Lv {e.get('antigo')} → {e.get('novo')}) 🔻 -{e.get('diff')}\n"
-            )
-    else:
-        msg += "_Nenhum mob XP registrado ainda._\n"
-
-    msg += f"\n_🕒 Atualizado em: {data} • {hora} (Brasil)_"
-    return msg
-
-
-def criar_novo_painel_mob_xp_peace(mensagem):
-    """Cria uma nova mensagem ativa no #mob-xp-peace e salva o ID."""
-    estado = carregar_json(ARQUIVO_ESTADO, {})
-    novo_id = enviar("mob_xp_peace", mensagem)
-    if novo_id:
-        estado["mob_xp_peace"] = novo_id
-        salvar_json(ARQUIVO_ESTADO, estado)
-    return novo_id
-
-
-def atualizar_painel_mob_xp_peace_com_rotacao(eventos):
-    """Atualiza a mensagem fixa de Mob XP Peace.
-
-    Se passar do limite do Discord, cria uma nova mensagem zerada e passa
-    a editar essa nova mensagem. A antiga fica no canal como histórico.
+    Cada guilda mantém mensagens e arquivos de histórico próprios nos canais
+    compartilhados #mob-xp e #saída-membros.
     """
-    historico_atual = carregar_historico_mob_xp_peace()
-    historico_tentativo = historico_atual + eventos
-    mensagem_tentativa = gerar_msg_mob_xp_peace_historico(historico_tentativo)
+    for chave, cfg in GUILDAS_HUNTED.items():
+        dados = analisar_guilda_hunted(chave, cfg, salvar_estado=True)
+        if not dados:
+            print(f"[tracker] {cfg['nome']}: nenhum membro encontrado; ciclo ignorado.")
+            continue
+        if dados["primeira"]:
+            print(f"[tracker] {cfg['nome']}: primeira execução, base salva sem alertas.")
+            continue
 
-    if len(mensagem_tentativa) >= DISCORD_LIMITE:
-        print("[tracker] histórico de #mob-xp-peace chegou perto do limite. criando nova mensagem zerada.")
-        historico_novo = eventos
-        mensagem_nova = gerar_msg_mob_xp_peace_historico(historico_novo)
-        salvar_historico_mob_xp_peace(historico_novo)
-        criar_novo_painel_mob_xp_peace(mensagem_nova)
-        return
+        eventos_mov = criar_eventos_movimentacoes(dados)
+        if eventos_mov:
+            atualizar_historico_com_rotacao(
+                "saida_membros_hunted",
+                f"saida_membros_hunted::{chave}",
+                chave,
+                "movimentacoes",
+                cfg["nome"],
+                eventos_mov,
+                gerar_msg_movimentacoes,
+            )
+        else:
+            print(f"[tracker] {cfg['nome']}: sem entrada, saída ou troca de nick.")
 
-    salvar_historico_mob_xp_peace(historico_tentativo)
-    atualizar_painel("mob_xp_peace", "mob_xp_peace", mensagem_tentativa)
+        eventos_mob = criar_eventos_mob_xp(dados)
+        if eventos_mob:
+            atualizar_historico_com_rotacao(
+                "mob_xp",
+                f"mob_xp::{chave}",
+                chave,
+                "mob_xp",
+                cfg["nome"],
+                eventos_mob,
+                gerar_msg_mob_xp,
+            )
+        else:
+            print(f"[tracker] {cfg['nome']}: sem level down.")
+
+
+# Compatibilidade com nomes antigos usados em versões anteriores.
+def atualizar_peace_killers():
+    atualizar_spy_info()
 
 
 def monitorar_mob_xp_peace():
-    """Monitora level downs dos membros da Peace Killers a cada ciclo.
-
-    Primeira execução apenas salva a base, sem mandar alerta falso.
-    Depois, se algum membro descer level, adiciona no histórico e edita a
-    mensagem ativa do canal #mob-xp-peace.
-    """
-    _, levels_atuais = pegar_membros_hunted()
-    if not levels_atuais:
-        print("[tracker] nenhum membro da Peace encontrado. Mob XP ignorado.")
-        return
-
-    levels_antigos = carregar_json(ARQUIVO_MOB_XP_PEACE_LEVELS, None)
-
-    if not levels_antigos:
-        print("[tracker] primeira execução do Mob XP Peace. salvando base sem alertas.")
-        salvar_json(ARQUIVO_MOB_XP_PEACE_LEVELS, levels_atuais)
-        return
-
-    downs = []
-    for nome, level in levels_atuais.items():
-        if nome in levels_antigos:
-            antigo = levels_antigos[nome]
-            if level < antigo:
-                downs.append((nome, antigo, level))
-
-    if downs:
-        eventos = criar_eventos_mob_xp_peace(downs)
-        atualizar_painel_mob_xp_peace_com_rotacao(eventos)
-    else:
-        print("[tracker] sem Mob XP Peace detectado.")
-
-    salvar_json(ARQUIVO_MOB_XP_PEACE_LEVELS, levels_atuais)
+    monitorar_guildas_hunted()

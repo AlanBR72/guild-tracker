@@ -1,26 +1,26 @@
 import requests
 
 from config import (
+    ARQUIVO_ESTADO,
     DISCORD_LIMITE,
     WEBHOOK_ENTRADA_SAIDA,
-    WEBHOOK_PEACE_KILLERS,
-    WEBHOOK_MOB_XP_PEACE,
+    WEBHOOK_MOB_XP,
+    WEBHOOK_SAIDA_MEMBROS_HUNTED,
+    WEBHOOK_SPY_INFO,
     WEBHOOK_SPY_RANK,
     WEBHOOK_UP_LEVELS,
     WEBHOOK_VISAO_GERAL,
-    WEBHOOK_SAIDA_MEMBROS_PEACE,
 )
 from storage import carregar_json, salvar_json
-from config import ARQUIVO_ESTADO
 
 WEBHOOKS = {
     "spy_rank": WEBHOOK_SPY_RANK,
     "visao_geral": WEBHOOK_VISAO_GERAL,
     "entrada_saida": WEBHOOK_ENTRADA_SAIDA,
     "up_levels": WEBHOOK_UP_LEVELS,
-    "peace_killers": WEBHOOK_PEACE_KILLERS,
-    "mob_xp_peace": WEBHOOK_MOB_XP_PEACE,
-    "saida_membros_peace": WEBHOOK_SAIDA_MEMBROS_PEACE,
+    "spy_info": WEBHOOK_SPY_INFO,
+    "mob_xp": WEBHOOK_MOB_XP,
+    "saida_membros_hunted": WEBHOOK_SAIDA_MEMBROS_HUNTED,
 }
 
 
@@ -40,7 +40,6 @@ def enviar(canal: str, mensagem: str):
 def editar(canal: str, msg_id: str, mensagem: str):
     if not msg_id:
         return enviar(canal, mensagem)
-
     webhook = WEBHOOKS[canal]
     try:
         r = requests.patch(f"{webhook}/messages/{msg_id}", json={"content": mensagem}, timeout=20)
@@ -58,7 +57,7 @@ def dividir_mensagem(mensagem: str, limite: int = DISCORD_LIMITE):
     while len(mensagem) > limite:
         corte = mensagem[:limite]
         ultimo_break = corte.rfind("\n")
-        if ultimo_break != -1:
+        if ultimo_break > 0:
             partes.append(mensagem[:ultimo_break])
             mensagem = mensagem[ultimo_break:].lstrip("\n")
         else:
@@ -70,8 +69,10 @@ def dividir_mensagem(mensagem: str, limite: int = DISCORD_LIMITE):
 
 
 def enviar_em_partes(canal: str, mensagem: str):
+    ids = []
     for parte in dividir_mensagem(mensagem):
-        enviar(canal, parte)
+        ids.append(enviar(canal, parte))
+    return ids
 
 
 def atualizar_painel(canal: str, estado_key: str, mensagem: str):
