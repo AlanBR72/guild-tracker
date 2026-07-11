@@ -1,21 +1,27 @@
 import pytz
+from urllib.parse import quote
 
 # =========================
 # URLs DO RUCOY
 # =========================
 GUILD_URL = "https://www.rucoyonline.com/guild/Guilt%20Of%20Virtue"
-# Guildas atualmente em hunted.
-# Para adicionar/remover uma guilda, altere apenas este dicionário.
+
+# Adicione ou remova guildas hunted somente aqui.
+# A chave é o nome exibido no Discord. A URL pode ser informada manualmente;
+# se for omitida, ela é montada automaticamente pelo nome da guilda.
 GUILDAS_HUNTED = {
-    "peace_killers": {
-        "nome": "Peace Killers",
+    "Peace Killers": {
         "url": "https://www.rucoyonline.com/guild/Peace%20Killers",
     },
-    "infernal_cruelty": {
-        "nome": "Infernal Cruelty",
+    "Infernal Cruelty": {
         "url": "https://www.rucoyonline.com/guild/Infernal%20Cruelty",
     },
 }
+
+
+def url_guilda_hunted(nome: str, config: dict) -> str:
+    return config.get("url") or f"https://www.rucoyonline.com/guild/{quote(nome)}"
+
 
 HIGHSCORE_XP = "https://www.rucoyonline.com/highscores/experience/2016/1"
 HIGHSCORE_MAGIC = "https://www.rucoyonline.com/highscores/magic/2016/1"
@@ -30,9 +36,11 @@ WEBHOOK_SPY_RANK = "https://discord.com/api/webhooks/1494393213409300531/iX8kJAH
 WEBHOOK_VISAO_GERAL = "https://discord.com/api/webhooks/1524443607837442170/GZ1t2ayHAY-pdNLWyo2dqXYHTkPQYY8tWDqJHKTOnmQrCkwK0EbI4ckPTVeUS1SqUwP_"
 WEBHOOK_ENTRADA_SAIDA = "https://discord.com/api/webhooks/1481362798326972448/aRQkId2Le1rzymVrtXQHRgxv2c6RU7GPMrCcg7R6sQ_FXfGQv6xeaJjrOtCXYArL57Up"
 WEBHOOK_UP_LEVELS = "https://discord.com/api/webhooks/1524443815920799888/kUNlK2oBN8CCqusF9XX4OJRPALOH4ehgbB066kmVONMsv-sW9G2NwaaM_1wYnRv2hyhq"
+
+# Os três webhooks abaixo continuam sendo os mesmos; apenas os canais foram renomeados.
 WEBHOOK_SPY_INFO = "https://discord.com/api/webhooks/1524443881045757983/rA2XNrujiBnp7lHh54b3MAkTTMesRbuqP9nEO44qjy7WP0e0jt_E8h7Hsu7etw1qiwyc"
 WEBHOOK_MOB_XP = "https://discord.com/api/webhooks/1524793800688406642/OucCMAmMXTG-Pr3uWi9UoyS1rCIXiTHMlL4ASGZ199yiQ_ED5H5YP7hJ9bmGPrOlyU3-"
-WEBHOOK_SAIDA_MEMBROS_HUNTED = "https://discord.com/api/webhooks/1525161252974760046/pSK7N_O_t75H2lVOKHHsMte2CuHEVRApMFxAggHaUAkeZNPrhglNVjCmbbL5OqZQ1BL6"
+WEBHOOK_SAIDA_MEMBROS = "https://discord.com/api/webhooks/1525161252974760046/pSK7N_O_t75H2lVOKHHsMte2CuHEVRApMFxAggHaUAkeZNPrhglNVjCmbbL5OqZQ1BL6"
 
 # =========================
 # ARQUIVOS
@@ -48,14 +56,17 @@ ARQUIVO_HISTORICO_LEVELS = f"{DATA_FOLDER}/historico_levels.json"
 ARQUIVO_HISTORICO_ENTRADA_SAIDA = f"{DATA_FOLDER}/historico_entrada_saida.json"
 ARQUIVO_LAST_ONLINE_CACHE = f"{DATA_FOLDER}/last_online_cache.json"
 
+# Estados das guildas hunted ficam em arquivos dinâmicos dentro de data/hunted/.
+HUNTED_DATA_FOLDER = f"{DATA_FOLDER}/hunted"
+
 # =========================
 # TEMPO / EXECUÇÃO
 # =========================
 BRASIL = pytz.timezone("America/Sao_Paulo")
 INTERVALO_GUILDA = 600  # 10 minutos
 INTERVALO_HUNTED = 300  # 5 minutos
-INTERVALO_LOOP = 5      # checagem interna do loop
-# compatibilidade com versões antigas
+INTERVALO_PEACE = INTERVALO_HUNTED  # compatibilidade
+INTERVALO_LOOP = 5
 INTERVALO_MONITOR = INTERVALO_GUILDA
 HORA_ATUALIZACAO_DIARIA = 3
 MINUTO_ATUALIZACAO_DIARIA = 0
@@ -66,7 +77,9 @@ MINUTO_ATUALIZACAO_DIARIA = 0
 THREADS = 10
 REQUEST_TIMEOUT = 15
 USER_AGENT = "Mozilla/5.0"
-DISCORD_LIMITE = 1900  # webhooks em content aceitam até 2000; usamos margem
+
+# Mensagens comuns enviadas por webhook usam content e devem ficar abaixo de 2000.
+DISCORD_LIMITE = 1900
 LEVEL_IMPORTANTES = [600, 700, 800]
 MARGEM_QUASE_LEVEL = 5
 INATIVO_AVISO = 10
