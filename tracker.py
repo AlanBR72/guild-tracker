@@ -20,7 +20,7 @@ from config import (
     REQUEST_TIMEOUT,
     USER_AGENT,
 )
-from discord_utils import editar, enviar, enviar_em_partes
+from discord_utils import atualizar_painel, editar, enviar, enviar_em_partes
 from storage import carregar_json, salvar_json
 from utils import data_hora_brasil, data_hora_segundos_brasil, detectar_classe
 
@@ -646,11 +646,21 @@ def atualizar_spy_rank():
     enviar_em_partes("spy_rank", msg)
 
 
+def _chave_estado_spy_info(nome_guilda: str) -> str:
+    """Cria uma chave estável para o ID do painel de cada guilda hunted."""
+    slug = re.sub(r"[^a-z0-9]+", "_", nome_guilda.lower()).strip("_")
+    return f"spy_info_{slug}"
+
+
 def atualizar_spy_info():
-    """Envia uma nova mensagem diária separada para cada guilda hunted."""
+    """Cria um painel por guilda na primeira execução e o edita às 03:00."""
     for nome_guilda, cfg in GUILDAS_HUNTED.items():
         try:
             mensagem = gerar_msg_spy_info_guilda(nome_guilda, cfg)
-            enviar_em_partes("spy_info", mensagem)
+            atualizar_painel(
+                "spy_info",
+                _chave_estado_spy_info(nome_guilda),
+                mensagem,
+            )
         except Exception as e:
             print(f"[tracker] erro ao atualizar spy info de {nome_guilda}: {e}")

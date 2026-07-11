@@ -8,6 +8,7 @@ from config import (
     HORA_ATUALIZACAO_DIARIA,
     INTERVALO_GUILDA,
     INTERVALO_HUNTED,
+    INTERVALO_VISAO_GERAL,
     INTERVALO_LOOP,
     MINUTO_ATUALIZACAO_DIARIA,
 )
@@ -20,10 +21,18 @@ def executar_monitoramento_guilda():
     try:
         print("[main] monitoramento da Virtue iniciado...")
         monitorar_guilda()
-        atualizar_visao_geral()
         print("[main] monitoramento da Virtue finalizado.")
     except Exception as e:
         print(f"[main] erro no monitoramento da Virtue: {e}")
+
+
+def executar_visao_geral():
+    try:
+        print("[main] atualização do #visao-geral iniciada...")
+        atualizar_visao_geral()
+        print("[main] atualização do #visao-geral finalizada.")
+    except Exception as e:
+        print(f"[main] erro ao atualizar #visao-geral: {e}")
 
 
 def executar_monitoramento_hunted():
@@ -81,7 +90,8 @@ def main():
 
     print("===================================")
     print(" Rucoy Guild Tracker iniciado")
-    print(f" Virtue: a cada {INTERVALO_GUILDA // 60} minutos")
+    print(f" Virtue (movimentações/levels): a cada {INTERVALO_GUILDA // 60} minutos")
+    print(f" Visão geral da Virtue: a cada {INTERVALO_VISAO_GERAL // 60} minutos")
     print(f" Guildas hunted: a cada {INTERVALO_HUNTED // 60} minutos")
     print(f" Hunted configuradas: {', '.join(GUILDAS_HUNTED.keys())}")
     print(" Painéis diários: 03:00 Brasil")
@@ -89,6 +99,7 @@ def main():
 
     ultimo_dia_atualizado = None
     ultima_guilda = None
+    ultima_visao_geral = None
     ultima_hunted = None
 
     executar_primeira_mensagem_trackers()
@@ -99,6 +110,13 @@ def main():
         if ultima_guilda is None or segundos_desde(ultima_guilda, agora) >= INTERVALO_GUILDA:
             executar_monitoramento_guilda()
             ultima_guilda = datetime.now(BRASIL)
+
+        if (
+            ultima_visao_geral is None
+            or segundos_desde(ultima_visao_geral, agora) >= INTERVALO_VISAO_GERAL
+        ):
+            executar_visao_geral()
+            ultima_visao_geral = datetime.now(BRASIL)
 
         if ultima_hunted is None or segundos_desde(ultima_hunted, agora) >= INTERVALO_HUNTED:
             executar_monitoramento_hunted()

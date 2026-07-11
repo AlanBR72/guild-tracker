@@ -63,7 +63,8 @@ HUNTED_DATA_FOLDER = f"{DATA_FOLDER}/hunted"
 # TEMPO / EXECUÇÃO
 # =========================
 BRASIL = pytz.timezone("America/Sao_Paulo")
-INTERVALO_GUILDA = 600  # 10 minutos
+INTERVALO_GUILDA = 600  # 10 minutos: entradas/saídas e levels da Virtue
+INTERVALO_VISAO_GERAL = 1800  # 30 minutos: painel #visao-geral
 INTERVALO_HUNTED = 300  # 5 minutos
 INTERVALO_PEACE = INTERVALO_HUNTED  # compatibilidade
 INTERVALO_LOOP = 5
