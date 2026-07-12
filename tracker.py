@@ -491,11 +491,14 @@ def atualizar_historico_separado(
         salvar_json(arquivo_historico, tentativa)
 
 
-def monitorar_uma_guilda_hunted(nome_guilda: str, cfg: dict):
+def monitorar_uma_guilda_hunted(nome_guilda: str, cfg: dict) -> bool:
+    """Monitora uma guilda hunted e retorna True se houve mudança relevante."""
     membros, levels_atuais, guild_datas = pegar_membros_guilda_hunted(nome_guilda, cfg)
     if not levels_atuais:
         print(f"[tracker] nenhum membro encontrado em {nome_guilda}; ciclo ignorado.")
-        return
+        return False
+
+    houve_mudanca = False
 
     garantir_hunted_folder()
 
@@ -523,6 +526,7 @@ def monitorar_uma_guilda_hunted(nome_guilda: str, cfg: dict):
         ]
 
         if entraram or sairam:
+            houve_mudanca = True
             entradas_restantes, saidas_restantes, trocas = separar_trocas_nick_hunted(
                 entraram, sairam
             )
@@ -550,7 +554,11 @@ def monitorar_uma_guilda_hunted(nome_guilda: str, cfg: dict):
     if not levels_antigos:
         print(f"[tracker] primeira base de Mob XP salva para {nome_guilda}.")
         salvar_json(arquivo_levels, levels_atuais)
-        return
+        return houve_mudanca
+
+    # Qualquer alteração de level é relevante para o #spy-info.
+    if levels_atuais != levels_antigos:
+        houve_mudanca = True
 
     downs = []
     for nome, level in levels_atuais.items():
@@ -569,15 +577,19 @@ def monitorar_uma_guilda_hunted(nome_guilda: str, cfg: dict):
         print(f"[tracker] sem Mob XP em {nome_guilda}.")
 
     salvar_json(arquivo_levels, levels_atuais)
+    return houve_mudanca
 
 
-def monitorar_guildas_hunted():
-    """Monitora todas as guildas listadas em GUILDAS_HUNTED."""
+def monitorar_guildas_hunted() -> bool:
+    """Monitora todas as hunted e retorna True se alguma mudou."""
+    houve_mudanca_geral = False
     for nome_guilda, cfg in GUILDAS_HUNTED.items():
         try:
-            monitorar_uma_guilda_hunted(nome_guilda, cfg)
+            if monitorar_uma_guilda_hunted(nome_guilda, cfg):
+                houve_mudanca_geral = True
         except Exception as e:
             print(f"[tracker] erro ao monitorar {nome_guilda}: {e}")
+    return houve_mudanca_geral
 
 
 def gerar_msg_spy_info_guilda(nome_guilda: str, cfg: dict) -> str:
@@ -627,12 +639,14 @@ def gerar_msg_spy_info_guilda(nome_guilda: str, cfg: dict) -> str:
     return msg
 
 
-def gerar_msg_spy_info() -> list:
-    """Retorna uma mensagem separada para cada guilda hunted configurada."""
-    return [
-        gerar_msg_spy_info_guilda(nome_guilda, cfg)
-        for nome_guilda, cfg in GUILDAS_HUNTED.items()
-    ]
+def gerar_msg_spy_info() -> str:
+    """Gera um único painel com todas as guildas hunted configuradas."""
+    relatorios = []
+
+    for nome_guilda, cfg in GUILDAS_HUNTED.items():
+        relatorios.append(gerar_msg_spy_info_guilda(nome_guilda, cfg))
+
+    return "\n\n━━━━━━━━━━━━━━━━━━━━━━\n\n".join(relatorios)
 
 
 # =========================
@@ -646,21 +660,10 @@ def atualizar_spy_rank():
     enviar_em_partes("spy_rank", msg)
 
 
-def _chave_estado_spy_info(nome_guilda: str) -> str:
-    """Cria uma chave estável para o ID do painel de cada guilda hunted."""
-    slug = re.sub(r"[^a-z0-9]+", "_", nome_guilda.lower()).strip("_")
-    return f"spy_info_{slug}"
-
-
 def atualizar_spy_info():
-    """Cria um painel por guilda na primeira execução e o edita às 03:00."""
-    for nome_guilda, cfg in GUILDAS_HUNTED.items():
-        try:
-            mensagem = gerar_msg_spy_info_guilda(nome_guilda, cfg)
-            atualizar_painel(
-                "spy_info",
-                _chave_estado_spy_info(nome_guilda),
-                mensagem,
-            )
-        except Exception as e:
-            print(f"[tracker] erro ao atualizar spy info de {nome_guilda}: {e}")
+    """Cria um único painel do #spy-info e depois edita esse painel às 03:00."""
+    try:
+        mensagem = gerar_msg_spy_info()
+        atualizar_painel("spy_info", "msg_spy_info", mensagem)
+    except Exception as e:
+        print(f"[tracker] erro ao atualizar #spy-info: {e}")

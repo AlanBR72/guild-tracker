@@ -38,7 +38,14 @@ def executar_visao_geral():
 def executar_monitoramento_hunted():
     try:
         print("[main] monitoramento das guildas hunted iniciado...")
-        monitorar_guildas_hunted()
+        houve_mudanca = monitorar_guildas_hunted()
+
+        if houve_mudanca:
+            print("[main] mudança relevante detectada; atualizando #spy-info...")
+            atualizar_spy_info()
+        else:
+            print("[main] nenhuma mudança relevante para o #spy-info.")
+
         print("[main] monitoramento das guildas hunted finalizado.")
     except Exception as e:
         print(f"[main] erro no monitoramento das guildas hunted: {e}")
