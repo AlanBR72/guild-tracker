@@ -489,6 +489,13 @@ def atualizar_painel_entrada_saida_com_rotacao(eventos):
 
     if len(mensagem_tentativa) >= DISCORD_LIMITE:
         print("[guild] histórico de #entrada-e-saidas chegou perto do limite. criando nova mensagem zerada.")
+        aviso = (
+            "⚠️ **O histórico de entradas e saídas da guilda Virtue "
+            "atingiu o limite de caracteres.**\n"
+            "Uma nova lista será iniciada abaixo para continuar o histórico."
+        )
+        enviar("entrada_saida", aviso)
+
         historico_novo = eventos
         mensagem_nova = gerar_msg_entrada_saida_historico(historico_novo)
         salvar_historico_entrada_saida(historico_novo)
@@ -589,6 +596,13 @@ def atualizar_painel_up_levels_com_rotacao(eventos):
 
     if len(mensagem_tentativa) >= DISCORD_LIMITE:
         print("[guild] histórico de #up-levels chegou perto do limite. criando nova mensagem zerada.")
+        aviso = (
+            "⚠️ **O histórico de Level Ups/Downs da guilda Virtue "
+            "atingiu o limite de caracteres.**\n"
+            "Uma nova lista será iniciada abaixo para continuar o histórico."
+        )
+        enviar("up_levels", aviso)
+
         historico_novo = eventos
         mensagem_nova = gerar_msg_up_levels_historico(historico_novo)
         salvar_historico_levels(historico_novo)

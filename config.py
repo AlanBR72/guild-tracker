@@ -80,7 +80,7 @@ REQUEST_TIMEOUT = 15
 USER_AGENT = "Mozilla/5.0"
 
 # Mensagens comuns enviadas por webhook usam content e devem ficar abaixo de 2000.
-DISCORD_LIMITE = 1900
+DISCORD_LIMITE = 1950
 LEVEL_IMPORTANTES = [600, 700, 800]
 MARGEM_QUASE_LEVEL = 5
 INATIVO_AVISO = 10
