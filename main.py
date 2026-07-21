@@ -55,7 +55,7 @@ def executar_paineis_diarios():
     try:
         print("[main] atualização diária iniciada...")
         atualizar_spy_rank()
-        atualizar_spy_info()
+        atualizar_spy_info(novo_ciclo=True)
         print("[main] atualização diária finalizada.")
     except Exception as e:
         print(f"[main] erro na atualização diária: {e}")
@@ -67,14 +67,21 @@ def executar_primeira_mensagem_trackers():
     if not estado.get("primeira_msg_spy_rank"):
         print("[main] criando primeira mensagem do #spy-rank...")
         atualizar_spy_rank()
+        estado = carregar_json(ARQUIVO_ESTADO, {})
         estado["primeira_msg_spy_rank"] = True
+        salvar_json(ARQUIVO_ESTADO, estado)
 
+    estado = carregar_json(ARQUIVO_ESTADO, {})
     if not estado.get("primeira_msg_spy_info"):
-        print("[main] criando primeira mensagem do #spy-info...")
+        print("[main] criando os primeiros painéis do #spy-info...")
         atualizar_spy_info()
+        estado = carregar_json(ARQUIVO_ESTADO, {})
         estado["primeira_msg_spy_info"] = True
-
-    salvar_json(ARQUIVO_ESTADO, estado)
+        salvar_json(ARQUIVO_ESTADO, estado)
+    else:
+        # Corrige automaticamente um ciclo perdido caso o bot tenha ficado
+        # desligado durante a virada das 03:00.
+        atualizar_spy_info()
 
 
 def deve_atualizar_diario(ultimo_dia):

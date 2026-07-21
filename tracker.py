@@ -1,7 +1,7 @@
 import os
 import re
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
 
 from config import (
@@ -491,6 +491,57 @@ def atualizar_historico_separado(
         salvar_json(arquivo_historico, tentativa)
 
 
+def ciclo_diario_hunted() -> str:
+    """Retorna a data do ciclo diário, que começa às 03:00 no Brasil."""
+    agora = datetime.now(BRASIL)
+    inicio_hoje = agora.replace(hour=3, minute=0, second=0, microsecond=0)
+    data_ciclo = agora.date() if agora >= inicio_hoje else (agora - timedelta(days=1)).date()
+    return data_ciclo.isoformat()
+
+
+def carregar_estado_spy_info_guilda(nome_guilda: str) -> dict:
+    arquivo = caminho_hunted(nome_guilda, "spy_info_diario")
+    estado = carregar_json(arquivo, {})
+    if not isinstance(estado, dict):
+        estado = {}
+    ciclo = ciclo_diario_hunted()
+    if estado.get("ciclo") != ciclo:
+        estado = {"ciclo": ciclo, "ups": []}
+        salvar_json(arquivo, estado)
+    if not isinstance(estado.get("ups"), list):
+        estado["ups"] = []
+    return estado
+
+
+def salvar_estado_spy_info_guilda(nome_guilda: str, estado: dict) -> None:
+    salvar_json(caminho_hunted(nome_guilda, "spy_info_diario"), estado)
+
+
+def acumular_ups_spy_info(nome_guilda: str, ups: list) -> None:
+    """Acumula ups sem duplicar dentro do ciclo diário atual."""
+    if not ups:
+        return
+    estado = carregar_estado_spy_info_guilda(nome_guilda)
+    existentes = {
+        (str(e.get("nome")), int(e.get("antigo", 0)), int(e.get("novo", 0)))
+        for e in estado.get("ups", [])
+        if isinstance(e, dict)
+    }
+    data, hora = data_hora_brasil()
+    for nome, antigo, novo in ups:
+        chave = (str(nome), int(antigo), int(novo))
+        if chave in existentes:
+            continue
+        estado["ups"].append({
+            "nome": nome,
+            "antigo": antigo,
+            "novo": novo,
+            "timestamp": f"{data} {hora}",
+        })
+        existentes.add(chave)
+    salvar_estado_spy_info_guilda(nome_guilda, estado)
+
+
 def monitorar_uma_guilda_hunted(nome_guilda: str, cfg: dict) -> bool:
     """Monitora uma guilda hunted e retorna True se houve mudança relevante."""
     membros, levels_atuais, guild_datas = pegar_membros_guilda_hunted(nome_guilda, cfg)
@@ -561,9 +612,16 @@ def monitorar_uma_guilda_hunted(nome_guilda: str, cfg: dict) -> bool:
         houve_mudanca = True
 
     downs = []
+    ups = []
     for nome, level in levels_atuais.items():
-        if nome in levels_antigos and level < levels_antigos[nome]:
+        if nome not in levels_antigos:
+            continue
+        if level < levels_antigos[nome]:
             downs.append((nome, levels_antigos[nome], level))
+        elif level > levels_antigos[nome]:
+            ups.append((nome, levels_antigos[nome], level))
+
+    acumular_ups_spy_info(nome_guilda, ups)
 
     if downs:
         atualizar_historico_separado(
@@ -593,24 +651,16 @@ def monitorar_guildas_hunted() -> bool:
 
 
 def gerar_msg_spy_info_guilda(nome_guilda: str, cfg: dict) -> str:
-    """Gera um relatório independente para uma única guilda hunted."""
+    """Gera o painel diário independente de uma guilda hunted."""
     garantir_hunted_folder()
-    membros, levels_atuais, _ = pegar_membros_guilda_hunted(nome_guilda, cfg)
+    _, levels_atuais, _ = pegar_membros_guilda_hunted(nome_guilda, cfg)
     data, hora = data_hora_brasil()
 
-    msg = f"_🕒 Atualizado em: {data} • {hora}_\n\n"
-    msg += f"🎯 **RELATÓRIO — {nome_guilda.upper()} (HUNTED)** 🎯\n\n"
+    msg = f"🎯 **{nome_guilda.upper()}** (HUNTED)\n\n"
+    msg += f"_🕒 Atualizado em: {data} • {hora}_\n\n"
 
     if not levels_atuais:
         return msg + "_Erro ao carregar a guilda._"
-
-    arquivo_relatorio = caminho_hunted(nome_guilda, "levels_relatorio")
-    levels_antigos = carregar_json(arquivo_relatorio, {})
-
-    ups = []
-    for nome, level in levels_atuais.items():
-        if nome in levels_antigos and level > levels_antigos[nome]:
-            ups.append((nome, levels_antigos[nome], level))
 
     total = len(levels_atuais)
     media = round(sum(levels_atuais.values()) / total) if total else 0
@@ -618,35 +668,78 @@ def gerar_msg_spy_info_guilda(nome_guilda: str, cfg: dict) -> str:
     l700 = sum(1 for level in levels_atuais.values() if level >= 700)
     l800 = sum(1 for level in levels_atuais.values() if level >= 800)
 
-    salvar_json(arquivo_relatorio, levels_atuais)
+    estado_diario = carregar_estado_spy_info_guilda(nome_guilda)
+    ups = estado_diario.get("ups", [])
 
-    msg += f"👥 **Membros:** {total}\n"
-    msg += f"⚔️ **Média de level:** {media}\n\n"
-    msg += "📊 **Distribuição de levels**\n"
-    msg += f"_Level 800+ ➤ {l800} membros_\n"
-    msg += f"_Level 700+ ➤ {l700} membros_\n"
-    msg += f"_Level 600+ ➤ {l600} membros_\n\n"
-    msg += "📈 **Ups de level**\n"
+    msg += f"👥 Membros: `{total}`\n"
+    msg += f"⚔️ Média: `Lv.{media}`\n\n"
+    msg += "📊 **Distribuição**\n"
+    msg += f"🔸 `800+` ➜ `{l800}`\n"
+    msg += f"🔸 `700+` ➜ `{l700}`\n"
+    msg += f"🔸 `600+` ➜ `{l600}`\n\n"
+    msg += "📈 **Últimos ups**\n"
 
-    if ups:
-        msg += "\n".join(
-            f"_**{nome}** ➤ {antigo} → {novo} (+{novo-antigo})_"
-            for nome, antigo, novo in ups
-        )
-    else:
-        msg += "_Nenhum_"
+    if not ups:
+        return msg + "_Nenhum_"
 
-    return msg
+    linhas = [
+        f"• **{evento.get('nome')}** `{evento.get('antigo')} → {evento.get('novo')}`"
+        for evento in ups
+    ]
+
+    # Proteção final contra o limite do Discord. Mantém os ups mais recentes.
+    omitidos = 0
+    while linhas:
+        sufixo = f"\n_... {omitidos} up(s) mais antigo(s) omitido(s) pelo limite._" if omitidos else ""
+        tentativa = msg + "\n".join(linhas) + sufixo
+        if len(tentativa) < DISCORD_LIMITE:
+            return tentativa
+        linhas.pop(0)
+        omitidos += 1
+
+    return msg + "_Nenhum_"
 
 
-def gerar_msg_spy_info() -> str:
-    """Gera um único painel com todas as guildas hunted configuradas."""
-    relatorios = []
+def atualizar_spy_info(novo_ciclo: bool = False):
+    """Mantém um painel diário separado para cada guilda hunted.
 
-    for nome_guilda, cfg in GUILDAS_HUNTED.items():
-        relatorios.append(gerar_msg_spy_info_guilda(nome_guilda, cfg))
+    A troca real de ciclo é controlada por uma chave global persistida. Assim,
+    mesmo se o bot reiniciar entre 03:00 e 03:10, não cria painéis duplicados.
+    """
+    try:
+        garantir_hunted_folder()
+        estado_geral = carregar_json(ARQUIVO_ESTADO, {})
+        ciclo_atual = ciclo_diario_hunted()
+        ciclo_ativo = estado_geral.get("hunted_spy_info_ciclo_ativo")
+        precisa_novo_ciclo = ciclo_ativo != ciclo_atual
 
-    return "\n\n━━━━━━━━━━━━━━━━━━━━━━\n\n".join(relatorios)
+        # novo_ciclo sinaliza a rotina das 03:00, mas a chave persistida impede
+        # duplicação caso a rotina rode novamente no mesmo ciclo.
+        if novo_ciclo and ciclo_ativo != ciclo_atual:
+            precisa_novo_ciclo = True
+
+        for nome_guilda, cfg in GUILDAS_HUNTED.items():
+            if precisa_novo_ciclo:
+                salvar_estado_spy_info_guilda(
+                    nome_guilda, {"ciclo": ciclo_atual, "ups": []}
+                )
+
+            mensagem = gerar_msg_spy_info_guilda(nome_guilda, cfg)
+            chave_id = chave_estado_hunted("spy_info", nome_guilda)
+            msg_id = estado_geral.get(chave_id)
+
+            if precisa_novo_ciclo or not msg_id:
+                novo_id = enviar("spy_info", mensagem)
+            else:
+                novo_id = editar("spy_info", msg_id, mensagem)
+
+            if novo_id:
+                estado_geral[chave_id] = novo_id
+
+        estado_geral["hunted_spy_info_ciclo_ativo"] = ciclo_atual
+        salvar_json(ARQUIVO_ESTADO, estado_geral)
+    except Exception as e:
+        print(f"[tracker] erro ao atualizar #spy-info: {e}")
 
 
 # =========================
@@ -660,10 +753,3 @@ def atualizar_spy_rank():
     enviar_em_partes("spy_rank", msg)
 
 
-def atualizar_spy_info():
-    """Cria um único painel do #spy-info e depois edita esse painel às 03:00."""
-    try:
-        mensagem = gerar_msg_spy_info()
-        atualizar_painel("spy_info", "msg_spy_info", mensagem)
-    except Exception as e:
-        print(f"[tracker] erro ao atualizar #spy-info: {e}")

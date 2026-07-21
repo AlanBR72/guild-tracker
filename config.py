@@ -16,6 +16,9 @@ GUILDAS_HUNTED = {
     "Infernal Cruelty": {
         "url": "https://www.rucoyonline.com/guild/Infernal%20Cruelty",
     },
+    "The Void": {
+        "url": "https://www.rucoyonline.com/guild/The%20Void",
+    },
 }
 
 

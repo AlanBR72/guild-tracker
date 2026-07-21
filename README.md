@@ -35,3 +35,11 @@ Ao atingir o limite configurado em `DISCORD_LIMITE` (1950), o bot:
 4. passa a editar somente a nova mensagem.
 
 O canal `#spy-info` recebe um relatório diário com todas as guildas hunted configuradas.
+
+## Painéis diários das guildas hunted
+
+- Cada guilda configurada em `GUILDAS_HUNTED` possui um painel separado no `#spy-info`.
+- Os ups ficam acumulados no painel da própria guilda durante o ciclo diário.
+- O ciclo começa às 03:00 no horário de Brasília.
+- Na virada, o bot mantém os painéis antigos e envia novos painéis zerados.
+- O estado do ciclo, os IDs das mensagens e os ups são persistidos em JSON.
