@@ -682,10 +682,14 @@ def gerar_msg_spy_info_guilda(nome_guilda: str, cfg: dict) -> str:
     if not ups:
         return msg + "_Nenhum_"
 
-    linhas = [
-        f"• **{evento.get('nome')}** `{evento.get('antigo')} → {evento.get('novo')}`"
-        for evento in ups
-    ]
+    linhas = []
+    for evento in ups:
+        timestamp = str(evento.get("timestamp", ""))
+        # O timestamp é salvo como DD/MM/YY HH:MM; no painel mostramos somente HH:MM.
+        hora_up = timestamp.split(" ", 1)[1] if " " in timestamp else timestamp
+        linhas.append(
+            f"• **{evento.get('nome')}** `{evento.get('antigo')} → {evento.get('novo')}` • `{hora_up}`"
+        )
 
     # Proteção final contra o limite do Discord. Mantém os ups mais recentes.
     omitidos = 0
