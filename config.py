@@ -19,6 +19,9 @@ GUILDAS_HUNTED = {
     "The Void": {
         "url": "https://www.rucoyonline.com/guild/The%20Void",
     },
+    "The Chaos Insurgency": {
+    "url": "https://www.rucoyonline.com/guild/The%20Chaos%20Insurgency",
+    }, 
 }
 
 
