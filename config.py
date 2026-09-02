@@ -16,12 +16,15 @@ GUILDAS_HUNTED = {
     "Infernal Cruelty": {
         "url": "https://www.rucoyonline.com/guild/Infernal%20Cruelty",
     },
-    "The Void": {
-        "url": "https://www.rucoyonline.com/guild/The%20Void",
+    "Glory Hill": {
+        "url": "https://www.rucoyonline.com/guild/Glory%20Hill",
     },
     "The Chaos Insurgency": {
     "url": "https://www.rucoyonline.com/guild/The%20Chaos%20Insurgency",
-    }, 
+    },
+    "Revoltz": {
+    "url": "https://www.rucoyonline.com/guild/Revoltz",
+    },
 }
 
 
